@@ -130,20 +130,19 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
         *   Adjust evolutionary parameters like `POPULATION_SIZE` and `GENERATIONS`.
         *   Modify API retry settings or logging levels.
 
-7.  **Run OpenAlpha_Evolve (Console Agent)**
+7.  **Run OpenAlpha_Evolve!**
     The `main.py` file is configured with an example task (Dijkstra's algorithm). To run it:
     ```bash
     python -m main
     ```
     Watch the logs in your terminal to see the evolutionary process unfold! Log files are also saved to `alpha_evolve.log` (by default).
 
-8.  **Using the Gradio Web Interface**
-    We've also provided a user-friendly Gradio-based UI in `app.py`, which lets you define custom tasks or use the Fibonacci example, then evolve solutions interactively.
-    To launch:
+8.  **Launch the Gradio Web Interface**
+    You can also interact with the system through the web UI. To start the Gradio app:
     ```bash
     python app.py
     ```
-    This starts a local server (default: http://127.0.0.1:7860). Open the URL in your browser, configure your task, and click "🚀 Run Evolution". Progress logs will appear in your terminal, and results will show up in the web UI.
+    Gradio will display a local URL (e.g., http://127.0.0.1:7860) and a public share link if enabled. Open this in your browser to define custom tasks and run the evolution process interactively.
 
 ---
 

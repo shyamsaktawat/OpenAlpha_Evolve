@@ -5,37 +5,25 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-# Main API key for Gemini (fallback provider)
+# Attempt to load the API key
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Provider identifiers
-PRO_KEY = "PRO"
-FLASH_KEY = "FLASH"
-EVALUATION_KEY = "EVALUATION"
+# Fallback for development if .env is not set or key is not found,
+# but ensure this is handled securely in production.
+if not GEMINI_API_KEY:
+    # --- IMPORTANT ---
+    # Directly embedding keys is a security risk.
+    # This is a placeholder for local development ONLY.
+    # In a real deployment, use environment variables, secrets management, or other secure methods.
+    # For local testing without a .env file, you can temporarily set it like:
+    # GEMINI_API_KEY = "YOUR_ACTUAL_API_KEY_HERE"
+    print("Warning: GEMINI_API_KEY not found in .env or environment. Using a NON-FUNCTIONAL placeholder. Please create a .env file with your valid API key.")
+    GEMINI_API_KEY = ""
 
 # LLM Model Configuration
-GEMINI_PRO_MODEL_NAME = os.getenv("GEMINI_PRO_MODEL_NAME", "gemini-2.5-flash-preview-04-17")
-GEMINI_FLASH_MODEL_NAME = os.getenv("GEMINI_FLASH_MODEL_NAME", "gemini-2.5-flash-preview-04-17")
-GEMINI_EVALUATION_MODEL = os.getenv("GEMINI_EVALUATION_MODEL", "gemini-2.5-flash-preview-04-17")
-
-# Custom provider settings for code generation
-CUSTOM_PROVIDERS = {
-    PRO_KEY: {
-        "base_url": os.getenv("PRO_BASE_URL", ""),
-        "api_key": os.getenv("PRO_API_KEY", GEMINI_API_KEY),
-        "model": os.getenv("PRO_MODEL", GEMINI_PRO_MODEL_NAME)
-    },
-    FLASH_KEY: {
-        "base_url": os.getenv("FLASH_BASE_URL", ""),
-        "api_key": os.getenv("FLASH_API_KEY", GEMINI_API_KEY),
-        "model": os.getenv("FLASH_MODEL", GEMINI_FLASH_MODEL_NAME)
-    },
-    EVALUATION_KEY: {
-        "base_url": os.getenv("EVALUATION_BASE_URL", ""),
-        "api_key": os.getenv("EVALUATION_API_KEY", GEMINI_API_KEY),
-        "model": os.getenv("EVALUATION_MODEL", GEMINI_EVALUATION_MODEL)
-    }
-}
+GEMINI_PRO_MODEL_NAME = "gemini-2.5-flash-preview-04-17" # Using a more capable model
+GEMINI_FLASH_MODEL_NAME = "gemini-2.5-flash-preview-04-17" # Default model for speed
+GEMINI_EVALUATION_MODEL = "gemini-2.5-flash-preview-04-17" # Model for evaluation tasks
 
 # Evolutionary Parameters (examples)
 POPULATION_SIZE = 5  # Number of individuals in each generation
@@ -65,11 +53,6 @@ RL_MODEL_PATH = "rl_finetuner_model.pth"
 
 # Monitoring (if implemented)
 MONITORING_DASHBOARD_URL = "http://localhost:8080" # Example
-
-# Fallback for development: warn if main API key isn't set
-if not GEMINI_API_KEY:
-    print("Warning: GEMINI_API_KEY not found in .env or environment. Some providers may not work without a valid key.")
-    GEMINI_API_KEY = None
 
 # --- Helper function to get a specific setting ---
 def get_setting(key, default=None):
