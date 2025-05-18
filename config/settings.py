@@ -5,43 +5,41 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-FLASH_KEY = "FLASH"
+# Main API key for Gemini (fallback provider)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# Provider identifiers
 PRO_KEY = "PRO"
+FLASH_KEY = "FLASH"
 EVALUATION_KEY = "EVALUATION"
 
+# LLM Model Configuration
+GEMINI_PRO_MODEL_NAME = os.getenv("GEMINI_PRO_MODEL_NAME", "gemini-2.5-flash-preview-04-17")
+GEMINI_FLASH_MODEL_NAME = os.getenv("GEMINI_FLASH_MODEL_NAME", "gemini-2.5-flash-preview-04-17")
+GEMINI_EVALUATION_MODEL = os.getenv("GEMINI_EVALUATION_MODEL", "gemini-2.5-flash-preview-04-17")
+
+# Custom provider settings for code generation
 CUSTOM_PROVIDERS = {
     PRO_KEY: {
-        "base_url": os.getenv("PRO_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/"),
-        "api_key": os.getenv("PRO_API_KEY"),
-        "model": os.getenv("PRO_MODEL", "models/gemini-2.0-flash")
+        "base_url": os.getenv("PRO_BASE_URL", ""),
+        "api_key": os.getenv("PRO_API_KEY", GEMINI_API_KEY),
+        "model": os.getenv("PRO_MODEL", GEMINI_PRO_MODEL_NAME)
     },
     FLASH_KEY: {
-        "base_url": os.getenv("FLASH_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/"),
-        "api_key": os.getenv("FLASH_API_KEY"),
-        "model": os.getenv("FLASH_MODEL", "models/gemini-2.0-flash")
+        "base_url": os.getenv("FLASH_BASE_URL", ""),
+        "api_key": os.getenv("FLASH_API_KEY", GEMINI_API_KEY),
+        "model": os.getenv("FLASH_MODEL", GEMINI_FLASH_MODEL_NAME)
     },
     EVALUATION_KEY: {
-        "base_url": os.getenv("EVALUATION_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/"),
-        "api_key": os.getenv("EVALUATION_API_KEY"),
-        "model": os.getenv("EVALUATION_MODEL", "models/gemini-2.0-flash")
+        "base_url": os.getenv("EVALUATION_BASE_URL", ""),
+        "api_key": os.getenv("EVALUATION_API_KEY", GEMINI_API_KEY),
+        "model": os.getenv("EVALUATION_MODEL", GEMINI_EVALUATION_MODEL)
     }
 }
 
-# Fallback for development if .env is not set or key is not found,
-# but ensure this is handled securely in production.
-# if not CUSTOM_PROVIDERS['GEMINI']['api_key']:
-    # --- IMPORTANT ---
-    # Directly embedding keys is a security risk.
-    # This is a placeholder for local development ONLY.
-    # In a real deployment, use environment variables, secrets management, or other secure methods.
-    # For local testing without a .env file, you can temporarily set it like:
-    # GEMINI_API_KEY = "YOUR_ACTUAL_API_KEY_HERE"
-    # print("Warning: GEMINI_API_KEY not found in .env or environment. Using a NON-FUNCTIONAL placeholder. Please create a .env file with your valid API key.")
-    # CUSTOM_PROVIDERS['GEMINI']['api_key'] = "YOUR_API_KEY_FROM_DOTENV_WAS_NOT_FOUND_PLEASE_SET_IT_UP" # Obvious placeholder
-
 # Evolutionary Parameters (examples)
-POPULATION_SIZE = 50  # Number of individuals in each generation
-GENERATIONS = 50       # Number of generations to run the evolution
+POPULATION_SIZE = 5  # Number of individuals in each generation
+GENERATIONS = 2       # Number of generations to run the evolution
 ELITISM_COUNT = 1     # Number of best individuals to carry over to the next generation
 MUTATION_RATE = 0.7   # Probability of mutating an individual
 CROSSOVER_RATE = 0.2  # Probability of crossing over two parents (if crossover is implemented)
@@ -68,6 +66,11 @@ RL_MODEL_PATH = "rl_finetuner_model.pth"
 # Monitoring (if implemented)
 MONITORING_DASHBOARD_URL = "http://localhost:8080" # Example
 
+# Fallback for development: warn if main API key isn't set
+if not GEMINI_API_KEY:
+    print("Warning: GEMINI_API_KEY not found in .env or environment. Some providers may not work without a valid key.")
+    GEMINI_API_KEY = None
+
 # --- Helper function to get a specific setting ---
 def get_setting(key, default=None):
     """
@@ -82,9 +85,9 @@ def get_setting(key, default=None):
 # Example of how to get a model, perhaps with fallback logic (not strictly necessary with current direct assignments)
 def get_llm_model(model_type="pro"):
     if model_type == "pro":
-        return PRO_KEY
+        return GEMINI_PRO_MODEL_NAME
     elif model_type == "flash":
-        return FLASH_KEY
-    return FLASH_KEY # Default fallback
+        return GEMINI_FLASH_MODEL_NAME
+    return GEMINI_FLASH_MODEL_NAME # Default fallback
 
 # Add other global settings here 
