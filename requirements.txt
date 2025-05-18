@@ -1,5 +1,5 @@
 # Core Libraries
-google-generativeai  # For Gemini LLMs
+openai  # For openai compatible LLMs
 # langchain
 # langchain-google-genai # Or similar for Gemini integration
 python-dotenv # For managing environment variables

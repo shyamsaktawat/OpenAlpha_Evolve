@@ -1,36 +1,49 @@
-# Code Generator Agent 
-import google.generativeai as genai
-from typing import Optional, Dict, Any
+# Code Generator Agent
+import asyncio  # Added for retry sleep
 import logging
-import asyncio # Added for retry sleep
-from google.api_core.exceptions import InternalServerError, GoogleAPIError, DeadlineExceeded # For specific error handling
-import time
-import re # Added for diff application
+import re  # Added for diff application
+from typing import Any, Dict, Optional
 
-from core.interfaces import CodeGeneratorInterface, BaseAgent, Program
+from openai import (
+    APIError,
+    APITimeoutError,
+    AsyncOpenAI,
+    AuthenticationError,
+    BadRequestError,
+    InternalServerError,
+    RateLimitError,
+)
+
 from config import settings
+from core.interfaces import CodeGeneratorInterface
 
 logger = logging.getLogger(__name__)
 
 class CodeGeneratorAgent(CodeGeneratorInterface):
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         super().__init__(config)
-        if not settings.GEMINI_API_KEY:
-            raise ValueError("GEMINI_API_KEY not found in settings. Please set it in your .env file or config.")
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        self.model_name = settings.GEMINI_PRO_MODEL_NAME # Default to pro, can be overridden by task
-        self.generation_config = genai.types.GenerationConfig(
-            temperature=0.7, 
-            top_p=0.9,
-            top_k=40
-        )
-        logger.info(f"CodeGeneratorAgent initialized with model: {self.model_name}")
-        # self.max_retries and self.retry_delay_seconds are not used from instance, settings are used directly
+        self.pro_provider = settings.CUSTOM_PROVIDERS.get(settings.PRO_KEY)
+        self.flash_provider = settings.CUSTOM_PROVIDERS.get(settings.FLASH_KEY)
+        self.evaluation_provider = settings.CUSTOM_PROVIDERS.get(settings.EVALUATION_KEY)
 
-    async def generate_code(self, prompt: str, model_name: Optional[str] = None, temperature: Optional[float] = None, output_format: str = "code") -> str:
-        effective_model_name = model_name if model_name else self.model_name
-        logger.info(f"Attempting to generate code using model: {effective_model_name}, output_format: {output_format}")
-        
+
+        for provider in settings.CUSTOM_PROVIDERS:
+            if not settings.CUSTOM_PROVIDERS[provider]['api_key']:
+                raise ValueError(f"{provider} API_KEY not found in settings. Please set it in your .env file or config.")
+
+        self.client = AsyncOpenAI(base_url=settings.CUSTOM_PROVIDERS[settings.FLASH_KEY]['base_url'], api_key=settings.CUSTOM_PROVIDERS[settings.FLASH_KEY]['api_key'])
+        self.generation_config = {
+            "temperature":0.7,
+            "top_p":0.9,
+            "top_k":40,
+            #"max_tokens" : 1000, # optional if needed
+        }
+
+
+    async def generate_code(self, prompt: str, provider_name: Optional[str] = None, temperature: Optional[float] = None, output_format: str = "code") -> str:
+        provider_name = provider_name if provider_name else settings.FLASH_KEY 
+        logger.info(f"Attempting to generate code using model: {provider_name}, output_format: {output_format}")
+
         # Add diff instructions if requested
         if output_format == "diff":
             prompt += '''
@@ -47,39 +60,35 @@ Make sure that the changes you propose are consistent with each other.
 '''
         
         logger.debug(f"Received prompt for code generation (format: {output_format}):\n--PROMPT START--\n{prompt}\n--PROMPT END--")
-        
-        current_generation_config = genai.types.GenerationConfig(
-            temperature=temperature if temperature is not None else self.generation_config.temperature,
-            top_p=self.generation_config.top_p,
-            top_k=self.generation_config.top_k
-        )
+
         if temperature is not None:
             logger.debug(f"Using temperature override: {temperature}")
-        
-        model_to_use = genai.GenerativeModel(
-            effective_model_name,
-            generation_config=current_generation_config
-        )
 
         retries = settings.API_MAX_RETRIES
         delay = settings.API_RETRY_DELAY_SECONDS
         
         for attempt in range(retries):
             try:
-                logger.debug(f"API Call Attempt {attempt + 1} of {retries} to {effective_model_name}.")
-                response = await model_to_use.generate_content_async(prompt)
-                
-                if not response.candidates:
-                    logger.warning("Gemini API returned no candidates.")
-                    if response.prompt_feedback and response.prompt_feedback.block_reason:
-                        logger.error(f"Prompt blocked. Reason: {response.prompt_feedback.block_reason}")
-                        logger.error(f"Prompt feedback details: {response.prompt_feedback.safety_ratings}")
-                        raise GoogleAPIError(f"Prompt blocked by API. Reason: {response.prompt_feedback.block_reason}")
-                    return ""
+                logger.debug(f"API Call Attempt {attempt + 1} of {retries} to {provider_name}.")
 
-                generated_text = response.candidates[0].content.parts[0].text
-                logger.debug(f"Raw response from Gemini API:\n--RESPONSE START--\n{generated_text}\n--RESPONSE END--")
-                
+                client = self.client
+                client.api_key = settings.CUSTOM_PROVIDERS[provider_name]['api_key']
+                client.base_url = settings.CUSTOM_PROVIDERS[provider_name]['base_url']
+
+                response = await client.chat.completions.create(
+                    model=settings.CUSTOM_PROVIDERS[provider_name]['model'],
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=self.generation_config["max_tokens"] if "max_tokens" in self.generation_config else None,
+                    temperature=temperature,
+                    top_p=self.generation_config["top_p"]
+                )
+
+                generated_text = response.choices[0].message.content
+
+                logger.debug(f"Raw response from API:\n--RESPONSE START--\n{generated_text}\n--RESPONSE END--")
+                if generated_text is None:
+                    logger.error("Received None as generated text from API.")
+                    return ""
                 if output_format == "code":
                     cleaned_code = self._clean_llm_output(generated_text)
                     logger.debug(f"Cleaned code:\n--CLEANED CODE START--\n{cleaned_code}\n--CLEANED CODE END--")
@@ -87,19 +96,19 @@ Make sure that the changes you propose are consistent with each other.
                 else: # output_format == "diff"
                     logger.debug(f"Returning raw diff text:\n--DIFF TEXT START--\n{generated_text}\n--DIFF TEXT END--")
                     return generated_text # Return raw diff text
-            except (InternalServerError, DeadlineExceeded, GoogleAPIError) as e:
-                logger.warning(f"Gemini API error on attempt {attempt + 1}: {type(e).__name__} - {e}. Retrying in {delay}s...")
+            except (APIError, InternalServerError, TimeoutError, RateLimitError, APITimeoutError, AuthenticationError, BadRequestError) as e:
+                logger.warning(f"API error on attempt {attempt + 1}: {type(e).__name__} - {e}. Retrying in {delay}s...")
                 if attempt < retries - 1:
                     await asyncio.sleep(delay)
                     delay *= 2 
                 else:
-                    logger.error(f"Gemini API call failed after {retries} retries for model {effective_model_name}.")
+                    logger.error(f"API call failed after {retries} retries for model {provider_name}.")
                     raise
             except Exception as e:
-                logger.error(f"An unexpected error occurred during code generation with {effective_model_name}: {e}", exc_info=True)
+                logger.error(f"An unexpected error occurred during code generation with {provider_name}: {e}", exc_info=True)
                 raise
-        
-        logger.error(f"Code generation failed for model {effective_model_name} after all retries.")
+
+        logger.error(f"Code generation failed for model {provider_name} after all retries.")
         return ""
 
     def _clean_llm_output(self, raw_code: str) -> str:
@@ -172,8 +181,8 @@ Make sure that the changes you propose are consistent with each other.
         logger.debug(f"CodeGeneratorAgent.execute called. Output format: {output_format}")
         
         generated_output = await self.generate_code(
-            prompt=prompt, 
-            model_name=model_name, 
+            prompt=prompt,
+            provider_name=model_name,
             temperature=temperature,
             output_format=output_format
         )

@@ -20,7 +20,7 @@ class EvaluatorAgent(EvaluatorAgentInterface, BaseAgent):
     def __init__(self, task_definition: Optional[TaskDefinition] = None):
         super().__init__()
         self.task_definition = task_definition
-        self.evaluation_model_name = settings.GEMINI_EVALUATION_MODEL
+        self.evaluation_model_name = settings.EVALUATION_PROVIDER
         self.evaluation_timeout_seconds = settings.EVALUATION_TIMEOUT_SECONDS
         logger.info(f"EvaluatorAgent initialized with model: {self.evaluation_model_name}, timeout: {self.evaluation_timeout_seconds}s")
         if self.task_definition:

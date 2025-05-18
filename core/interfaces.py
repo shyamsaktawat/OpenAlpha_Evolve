@@ -1,6 +1,6 @@
 # Core components, interfaces, data models 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 
 @dataclass
@@ -54,7 +54,7 @@ class PromptDesignerInterface(BaseAgent):
 
 class CodeGeneratorInterface(BaseAgent):
     @abstractmethod
-    async def generate_code(self, prompt: str, model_name: Optional[str] = None, temperature: Optional[float] = 0.7, output_format: str = "code") -> str:
+    async def generate_code(self, prompt: str, provider_name: Optional[str] = None, temperature: Optional[float] = 0.7, output_format: str = "code") -> str:
         pass
 
 class EvaluatorAgentInterface(BaseAgent):
