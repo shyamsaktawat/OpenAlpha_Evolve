@@ -113,7 +113,7 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
     ```
 
 5.  **Set Up Environment Variables (Crucial for API Key)**:
-    *   Copy `.env.example` to a new file named `.env` in the project root:
+    *   Copy `.env_example` to a new file named `.env` in the project root:
         ```bash
         cp .env_example .env
         ```
