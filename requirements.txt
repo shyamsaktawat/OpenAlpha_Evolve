@@ -31,6 +31,7 @@ python-dotenv # For managing environment variables
 # Utilities
 # jinja2
 
-# API/Web (Optional, if exposing functionality)
+# API/Web
+gradio>=3.40.0  # Web interface for OpenAlpha_Evolve
 # fastapi
 # uvicorn 

@@ -139,6 +139,33 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
 
 ---
 
+## 🌐 Web Interface with Gradio
+
+OpenAlpha_Evolve comes with a user-friendly web interface powered by Gradio. This makes it easier to:
+
+1. Define algorithmic tasks through a form interface
+2. Adjust evolutionary parameters like population size and generations
+3. View and compare generated solutions with their fitness metrics
+4. Try multiple pre-defined example tasks without editing code
+
+To launch the web interface:
+
+```bash
+python app.py
+```
+
+This will start a local web server and open the interface in your browser. You can also access it from other devices on your network or share it temporarily with others via a public link.
+
+The interface is organized into three main tabs:
+
+1. **Task Definition**: Here you can define your algorithmic challenge, either by creating one from scratch or selecting a pre-defined example.
+2. **Evolution Process**: Set parameters like population size and generations, and run the evolutionary process.
+3. **Results**: View and analyze the evolved solutions, their fitness scores, and generated code.
+
+You can provide your Gemini API key directly in the interface if you prefer not to use a `.env` file.
+
+---
+
 ## 💡 Defining Your Own Algorithmic Quests!
 
 Want to challenge OpenAlpha_Evolve with a new problem? It's easy:
