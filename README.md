@@ -139,33 +139,6 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
 
 ---
 
-## 🌐 Web Interface with Gradio
-
-OpenAlpha_Evolve comes with a user-friendly web interface powered by Gradio. This makes it easier to:
-
-1. Define algorithmic tasks through a form interface
-2. Adjust evolutionary parameters like population size and generations
-3. View and compare generated solutions with their fitness metrics
-4. Try multiple pre-defined example tasks without editing code
-
-To launch the web interface:
-
-```bash
-python app.py
-```
-
-This will start a local web server and open the interface in your browser. You can also access it from other devices on your network or share it temporarily with others via a public link.
-
-The interface is organized into three main tabs:
-
-1. **Task Definition**: Here you can define your algorithmic challenge, either by creating one from scratch or selecting a pre-defined example.
-2. **Evolution Process**: Set parameters like population size and generations, and run the evolutionary process.
-3. **Results**: View and analyze the evolved solutions, their fitness scores, and generated code.
-
-You can provide your Gemini API key directly in the interface if you prefer not to use a `.env` file.
-
----
-
 ## 💡 Defining Your Own Algorithmic Quests!
 
 Want to challenge OpenAlpha_Evolve with a new problem? It's easy:
@@ -235,4 +208,45 @@ OpenAlpha_Evolve is proudly inspired by the pioneering work of the Google DeepMi
 
 ---
 
-*Disclaimer: This is an experimental project. Generated code may not always be optimal, correct, or secure. Always review and test code thoroughly, especially before using it in production environments.* 
+*Disclaimer: This is an experimental project. Generated code may not always be optimal, correct, or secure. Always review and test code thoroughly, especially before using it in production environments.*
+
+## 🌐 Web Interface with Gradio
+
+OpenAlpha_Evolve comes with a powerful web interface powered by Gradio. This makes it easier to:
+
+1. Define algorithmic tasks through a form interface
+2. Adjust evolutionary parameters like population size and generations
+3. View and compare generated solutions with their fitness metrics
+4. Try multiple pre-defined example tasks without editing code
+
+To launch the web interface:
+
+```bash
+python app.py
+```
+
+This will start a local web server and open the interface in your browser. You can also access it from other devices on your network or share it temporarily with others via a public link.
+
+### Key Features of the Web Interface
+
+The interface is organized into four main tabs:
+
+1. **Task Definition**: Define your algorithmic challenge, either by creating one from scratch or selecting a pre-defined example like shortest path algorithms, sorting, or Fibonacci series.
+
+2. **API Configuration**: 
+   - Select different LLM providers (currently supports Google Gemini)
+   - Enter your API key securely
+   - Configure different models for generation and evaluation tasks
+
+3. **Evolution Process**: 
+   - Set parameters like population size, generations, and mutation rate
+   - Start and stop the evolution process
+   - View real-time progress with detailed logs and status updates
+   - Monitor generation progress and fitness metrics as they evolve
+
+4. **Results**: 
+   - View and analyze the evolved solutions
+   - Compare fitness scores across different metrics
+   - Export solutions as standalone Python files
+
+The live evolution monitoring shows you exactly what's happening as the system generates, tests, and improves code - giving you insights into how the LLM approaches problem-solving through evolution. 
