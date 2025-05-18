@@ -62,7 +62,7 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
 
 ## 📂 Project Structure
 
-```
+```text
 ./
 ├── agents/                  # Core intelligent agents (subdirectories for each)
 │   ├── code_generator/
@@ -115,7 +115,7 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
 5.  **Set Up Environment Variables (Crucial for API Key)**:
     *   Copy `.env.example` to a new file named `.env` in the project root:
         ```bash
-        cp .env.example .env
+        cp .env_example .env
         ```
     *   **Edit the `.env` file** and add your `GEMINI_API_KEY`:
         ```env
