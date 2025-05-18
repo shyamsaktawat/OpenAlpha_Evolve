@@ -5,12 +5,33 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-# Attempt to load the API key
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+PRO_PROVIDER = "GEMINI"
+FLASH_PROVIDER = "GEMINI"
+EVALUATION_PROVIDER = "GEMINI"
+
+# Add multiple of the same provider with different keys if needed. A few examples:
+CUSTOM_PROVIDERS = {
+    #"OPENAI": {
+    #    "base_url": "https://api.openai.com/v1",
+    #    "api_key": os.getenv("OPENAI_API_KEY"),
+    #    "model": "gpt-4o" # API endpoint's model nmae
+    #},
+    "GEMINI": {
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "api_key": os.getenv("GEMINI_API_KEY"),
+        "model": "models/gemini-2.0-flash"
+    },
+    "GEMINI_PRO": {
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "api_key": os.getenv("GEMINI_API_KEY"),
+        "model": "gemini-2.5-pro-preview"
+    }
+}
 
 # Fallback for development if .env is not set or key is not found,
 # but ensure this is handled securely in production.
-if not GEMINI_API_KEY:
+if not CUSTOM_PROVIDERS['GEMINI']['api_key']:
     # --- IMPORTANT ---
     # Directly embedding keys is a security risk.
     # This is a placeholder for local development ONLY.
@@ -18,12 +39,7 @@ if not GEMINI_API_KEY:
     # For local testing without a .env file, you can temporarily set it like:
     # GEMINI_API_KEY = "YOUR_ACTUAL_API_KEY_HERE"
     print("Warning: GEMINI_API_KEY not found in .env or environment. Using a NON-FUNCTIONAL placeholder. Please create a .env file with your valid API key.")
-    GEMINI_API_KEY = "YOUR_API_KEY_FROM_DOTENV_WAS_NOT_FOUND_PLEASE_SET_IT_UP" # Obvious placeholder
-
-# LLM Model Configuration
-GEMINI_PRO_MODEL_NAME = "gemini-2.0-flash-lite" # Using a more capable model
-GEMINI_FLASH_MODEL_NAME = "gemini-2.0-flash-lite" # Default model for speed
-GEMINI_EVALUATION_MODEL = "gemini-2.0-flash-lite" # Model for evaluation tasks
+    CUSTOM_PROVIDERS['GEMINI']['api_key'] = "YOUR_API_KEY_FROM_DOTENV_WAS_NOT_FOUND_PLEASE_SET_IT_UP" # Obvious placeholder
 
 # Evolutionary Parameters (examples)
 POPULATION_SIZE = 50  # Number of individuals in each generation
@@ -68,9 +84,9 @@ def get_setting(key, default=None):
 # Example of how to get a model, perhaps with fallback logic (not strictly necessary with current direct assignments)
 def get_llm_model(model_type="pro"):
     if model_type == "pro":
-        return GEMINI_PRO_MODEL_NAME
+        return PRO_PROVIDER
     elif model_type == "flash":
-        return GEMINI_FLASH_MODEL_NAME
-    return GEMINI_FLASH_MODEL_NAME # Default fallback
+        return FLASH_PROVIDER
+    return FLASH_PROVIDER # Default fallback
 
 # Add other global settings here 
