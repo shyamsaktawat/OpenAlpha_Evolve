@@ -23,6 +23,7 @@ Imagine an agent that can:
 OpenAlpha_Evolve is a step towards this vision. It's not just about generating code; it's about creating a system that *discovers* and *refines* solutions autonomously.
 
 ---
+<img width="1253" alt="Screenshot 2025-05-19 at 12 17 58 AM" src="https://github.com/user-attachments/assets/43d7c5a8-f361-438c-ac38-39717f28ee1f" />
 
 ## 🧠 How It Works: The Evolutionary Cycle
 
