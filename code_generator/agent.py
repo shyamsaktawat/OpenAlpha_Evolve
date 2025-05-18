@@ -34,7 +34,8 @@ class CodeGeneratorAgent(CodeGeneratorInterface):
         self.generation_config = {
             "temperatur":0.7,
             "top_p":0.9,
-            "top_k":40
+            "top_k":40,
+            #"max_tokens" : 1000,
         }
 
         # self.max_retries and self.retry_delay_seconds are not used from instance, settings are used directly
@@ -77,7 +78,7 @@ Make sure that the changes you propose are consistent with each other.
                 response = await client.chat.completions.create(
                     model=settings.CUSTOM_PROVIDERS[provider_name]['model'],
                     messages=[{"role": "user", "content": prompt}],
-                    max_tokens=1024,
+                    max_tokens=self.generation_config["max_tokens"] if "max_tokens" in self.generation_config else None,
                     temperature=temperature,
                     top_p=self.generation_config["top_p"]
                 )
