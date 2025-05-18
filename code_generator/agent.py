@@ -4,12 +4,15 @@ import logging
 import re  # Added for diff application
 from typing import Any, Dict, Optional
 
-from google.api_core.exceptions import (  # For specific error handling
-    DeadlineExceeded,
-    GoogleAPIError,
+from openai import (
+    APIError,
+    APITimeoutError,
+    AsyncOpenAI,
+    AuthenticationError,
+    BadRequestError,
     InternalServerError,
+    RateLimitError,
 )
-from openai import AsyncOpenAI
 
 from config import settings
 from core.interfaces import CodeGeneratorInterface
@@ -19,29 +22,26 @@ logger = logging.getLogger(__name__)
 class CodeGeneratorAgent(CodeGeneratorInterface):
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         super().__init__(config)
-        self.pro_provider = settings.CUSTOM_PROVIDERS.get(settings.PRO_PROVIDER)
-        self.flash_provider_key = settings.FLASH_PROVIDER
-        self.flash_provider = settings.CUSTOM_PROVIDERS.get(settings.FLASH_PROVIDER)
-        self.evaluation_provider = settings.CUSTOM_PROVIDERS.get(settings.EVALUATION_PROVIDER)
+        self.pro_provider = settings.CUSTOM_PROVIDERS.get(settings.PRO_KEY)
+        self.flash_provider = settings.CUSTOM_PROVIDERS.get(settings.FLASH_KEY)
+        self.evaluation_provider = settings.CUSTOM_PROVIDERS.get(settings.EVALUATION_KEY)
 
 
         for provider in settings.CUSTOM_PROVIDERS:
             if not settings.CUSTOM_PROVIDERS[provider]['api_key']:
                 raise ValueError(f"{provider} API_KEY not found in settings. Please set it in your .env file or config.")
 
-        # self.clients = { provider : AsyncOpenAI(api_key=settings.CUSTOM_PROVIDERS[provider]['api_key'], base_url=settings.CUSTOM_PROVIDERS[provider]['base_url']) for provider in settings.CUSTOM_PROVIDERS }
-        self.client = AsyncOpenAI(base_url=settings.CUSTOM_PROVIDERS[self.flash_provider_key]['base_url'], api_key=settings.CUSTOM_PROVIDERS[self.flash_provider_key]['api_key'])
+        self.client = AsyncOpenAI(base_url=settings.CUSTOM_PROVIDERS[settings.FLASH_KEY]['base_url'], api_key=settings.CUSTOM_PROVIDERS[settings.FLASH_KEY]['api_key'])
         self.generation_config = {
-            "temperatur":0.7,
+            "temperature":0.7,
             "top_p":0.9,
             "top_k":40,
-            #"max_tokens" : 1000,
+            #"max_tokens" : 1000, # optional if needed
         }
 
-        # self.max_retries and self.retry_delay_seconds are not used from instance, settings are used directly
 
     async def generate_code(self, prompt: str, provider_name: Optional[str] = None, temperature: Optional[float] = None, output_format: str = "code") -> str:
-        provider_name = provider_name if provider_name else self.flash_provider_key
+        provider_name = provider_name if provider_name else settings.FLASH_KEY 
         logger.info(f"Attempting to generate code using model: {provider_name}, output_format: {output_format}")
 
         # Add diff instructions if requested
@@ -96,7 +96,7 @@ Make sure that the changes you propose are consistent with each other.
                 else: # output_format == "diff"
                     logger.debug(f"Returning raw diff text:\n--DIFF TEXT START--\n{generated_text}\n--DIFF TEXT END--")
                     return generated_text # Return raw diff text
-            except (InternalServerError, DeadlineExceeded, GoogleAPIError) as e:
+            except (APIError, InternalServerError, TimeoutError, RateLimitError, APITimeoutError, AuthenticationError, BadRequestError) as e:
                 logger.warning(f"API error on attempt {attempt + 1}: {type(e).__name__} - {e}. Retrying in {delay}s...")
                 if attempt < retries - 1:
                     await asyncio.sleep(delay)
