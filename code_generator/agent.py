@@ -105,9 +105,11 @@ Make sure your diff can be applied correctly!
                 logger.debug(f"Raw response from Gemini API:\n--RESPONSE START--\n{generated_text}\n--RESPONSE END--")
                 
                 if output_format == "code":
-                cleaned_code = self._clean_llm_output(generated_text)
-                logger.debug(f"Cleaned code:\n--CLEANED CODE START--\n{cleaned_code}\n--CLEANED CODE END--")
-                return cleaned_code
+                    if "```python" in generated_text:
+                        pass
+                    cleaned_code = self._clean_llm_output(generated_text)
+                    logger.debug(f"Cleaned code:\n--CLEANED CODE START--\n{cleaned_code}\n--CLEANED CODE END--")
+                    return cleaned_code
                 else:                           
                     logger.debug(f"Returning raw diff text:\n--DIFF TEXT START--\n{generated_text}\n--DIFF TEXT END--")
                     return generated_text                        

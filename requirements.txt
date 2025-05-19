@@ -1,7 +1,5 @@
 # Core Libraries
 google-generativeai>=0.3.0
-# langchain
-# langchain-google-genai # Or similar for Gemini integration
 python-dotenv>=1.0.0
 
 # LLM Models & Frameworks
@@ -36,7 +34,5 @@ python-dotenv>=1.0.0
 # uvicorn
 
 asyncio>=3.4.3
-typing>=3.7.4.3
 uuid>=1.30
-logging>=0.4.9.6
-gradio>=4.0.0 
+gradio>=4.0.0
