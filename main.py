@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 async def main():
     logger.info("Starting OpenAlpha_Evolve autonomous algorithmic evolution")
     logger.info(f"Configuration: Population Size={settings.POPULATION_SIZE}, Generations={settings.GENERATIONS}")
-    logger.info(f"LLM Models: Pro={settings.GEMINI_PRO_MODEL_NAME}, Flash={settings.GEMINI_FLASH_MODEL_NAME}, Eval={settings.GEMINI_EVALUATION_MODEL}")
+    logger.info(f"LLM Models: Pro={settings.PRO_MODEL}, Flash={settings.FLASH_MODEL}, Eval={settings.EVALUATION_MODEL}")
 
                                                                 
                                                                              

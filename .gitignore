@@ -120,3 +120,4 @@ Thumbs.db
 # Graphviz DOT source files
 openalpha_evolve_workflow
 *.dot 
+.gradio

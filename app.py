@@ -65,10 +65,10 @@ for module in ['task_manager.agent', 'code_generator.agent', 'evaluator_agent.ag
     logging.getLogger(module).setLevel(logging.DEBUG)
 
                          
-if settings.GEMINI_API_KEY.startswith("YOUR_API_KEY") or not settings.GEMINI_API_KEY:
-    API_KEY_WARNING = "⚠️ API key not properly set! Please set your Gemini API key in the .env file."
-else:
-    API_KEY_WARNING = ""
+# Check if API key is set
+if settings.PRO_API_KEY.startswith("YOUR_API_KEY") or not settings.PRO_API_KEY:
+    print("Error: Please set your API key in the .env file")
+    sys.exit(1)
 
                                               
 current_results = []
@@ -272,9 +272,6 @@ with gr.Blocks(title="OpenAlpha_Evolve") as demo:
     * **Multi-Model Support:** Additional language model backends coming soon.
     * **Evolutionary Budget:** For novel, complex solutions consider using large budgets (e.g., 100+ generations and population sizes of hundreds or thousands).
     """)
-    
-    if API_KEY_WARNING:
-        gr.Markdown(f"## ⚠️ {API_KEY_WARNING}")
     
     with gr.Row():
         with gr.Column(scale=1):
