@@ -1,4 +1,4 @@
-# OpenAlpha_Evolve: Regenerating Autonomous Algorithmic Discovery 🚀
+# OpenAlpha_Evolve:( Contribute to Improve this Project )
 
 ![openalpha_evolve_workflow](https://github.com/user-attachments/assets/9d4709ad-0072-44ae-bbb5-7eea1c5fa08c)
 
