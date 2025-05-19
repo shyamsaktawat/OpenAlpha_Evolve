@@ -1,114 +1,129 @@
-# Code Generator Agent
-import asyncio  # Added for retry sleep
+# Code Generator Agent 
+import google.generativeai as genai
+from typing import Optional, Dict, Any
 import logging
-import re  # Added for diff application
-from typing import Any, Dict, Optional
+import asyncio # Added for retry sleep
+from google.api_core.exceptions import InternalServerError, GoogleAPIError, DeadlineExceeded # For specific error handling
+import time
+import re # Added for diff application
 
-from openai import (
-    APIError,
-    APITimeoutError,
-    AsyncOpenAI,
-    AuthenticationError,
-    BadRequestError,
-    InternalServerError,
-    RateLimitError,
-)
-
+from core.interfaces import CodeGeneratorInterface, BaseAgent, Program
 from config import settings
-from core.interfaces import CodeGeneratorInterface
 
 logger = logging.getLogger(__name__)
 
 class CodeGeneratorAgent(CodeGeneratorInterface):
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         super().__init__(config)
-        self.pro_provider = settings.CUSTOM_PROVIDERS.get(settings.PRO_KEY)
-        self.flash_provider = settings.CUSTOM_PROVIDERS.get(settings.FLASH_KEY)
-        self.evaluation_provider = settings.CUSTOM_PROVIDERS.get(settings.EVALUATION_KEY)
+        if not settings.GEMINI_API_KEY:
+            raise ValueError("GEMINI_API_KEY not found in settings. Please set it in your .env file or config.")
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        self.model_name = settings.GEMINI_PRO_MODEL_NAME # Default to pro, can be overridden by task
+        self.generation_config = genai.types.GenerationConfig(
+            temperature=1.3, 
+            top_p=0.9,
+            top_k=40
+        )
+        logger.info(f"CodeGeneratorAgent initialized with model: {self.model_name}")
+        # self.max_retries and self.retry_delay_seconds are not used from instance, settings are used directly
 
-
-        for provider in settings.CUSTOM_PROVIDERS:
-            if not settings.CUSTOM_PROVIDERS[provider]['api_key']:
-                raise ValueError(f"{provider} API_KEY not found in settings. Please set it in your .env file or config.")
-
-        self.client = AsyncOpenAI(base_url=settings.CUSTOM_PROVIDERS[settings.FLASH_KEY]['base_url'], api_key=settings.CUSTOM_PROVIDERS[settings.FLASH_KEY]['api_key'])
-        self.generation_config = {
-            "temperature":0.7,
-            "top_p":0.9,
-            "top_k":40,
-            #"max_tokens" : 1000, # optional if needed
-        }
-
-
-    async def generate_code(self, prompt: str, provider_name: Optional[str] = None, temperature: Optional[float] = None, output_format: str = "code") -> str:
-        provider_name = provider_name if provider_name else settings.FLASH_KEY 
-        logger.info(f"Attempting to generate code using model: {provider_name}, output_format: {output_format}")
-
+    async def generate_code(self, prompt: str, model_name: Optional[str] = None, temperature: Optional[float] = None, output_format: str = "code") -> str:
+        effective_model_name = model_name if model_name else self.model_name
+        logger.info(f"Attempting to generate code using model: {effective_model_name}, output_format: {output_format}")
+        
         # Add diff instructions if requested
         if output_format == "diff":
             prompt += '''
 
-Provide your changes as a sequence of diff blocks in the following format:
+I need you to provide your changes as a sequence of diff blocks in the following format:
+
 <<<<<<< SEARCH
-# Original code block to be found and replaced
+# Original code block to be found and replaced (COPY EXACTLY from original)
 =======
 # New code block to replace the original
 >>>>>>> REPLACE
-Ensure the SEARCH block is an exact segment from the current program.
-Describe each change with such a SEARCH/REPLACE block.
-Make sure that the changes you propose are consistent with each other.
+
+IMPORTANT DIFF GUIDELINES:
+1. The SEARCH block MUST be an EXACT copy of code from the original - match whitespace, indentation, and line breaks precisely
+2. Each SEARCH block should be large enough (3-5 lines minimum) to uniquely identify where the change should be made
+3. Include context around the specific line(s) you want to change
+4. Make multiple separate diff blocks if you need to change different parts of the code
+5. For each diff, the SEARCH and REPLACE blocks must be complete, valid code segments
+
+Example of a good diff:
+<<<<<<< SEARCH
+def calculate_sum(numbers):
+    result = 0
+    for num in numbers:
+        result += num
+    return result
+=======
+def calculate_sum(numbers):
+    if not numbers:
+        return 0
+    result = 0
+    for num in numbers:
+        result += num
+    return result
+>>>>>>> REPLACE
+
+Make sure your diff can be applied correctly!
 '''
         
         logger.debug(f"Received prompt for code generation (format: {output_format}):\n--PROMPT START--\n{prompt}\n--PROMPT END--")
-
+        
+        current_generation_config = genai.types.GenerationConfig(
+            temperature=temperature if temperature is not None else self.generation_config.temperature,
+            top_p=self.generation_config.top_p,
+            top_k=self.generation_config.top_k
+        )
         if temperature is not None:
             logger.debug(f"Using temperature override: {temperature}")
+        
+        model_to_use = genai.GenerativeModel(
+            effective_model_name,
+            generation_config=current_generation_config
+        )
 
         retries = settings.API_MAX_RETRIES
         delay = settings.API_RETRY_DELAY_SECONDS
         
         for attempt in range(retries):
             try:
-                logger.debug(f"API Call Attempt {attempt + 1} of {retries} to {provider_name}.")
-
-                client = self.client
-                client.api_key = settings.CUSTOM_PROVIDERS[provider_name]['api_key']
-                client.base_url = settings.CUSTOM_PROVIDERS[provider_name]['base_url']
-
-                response = await client.chat.completions.create(
-                    model=settings.CUSTOM_PROVIDERS[provider_name]['model'],
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=self.generation_config["max_tokens"] if "max_tokens" in self.generation_config else None,
-                    temperature=temperature,
-                    top_p=self.generation_config["top_p"]
-                )
-
-                generated_text = response.choices[0].message.content
-
-                logger.debug(f"Raw response from API:\n--RESPONSE START--\n{generated_text}\n--RESPONSE END--")
-                if generated_text is None:
-                    logger.error("Received None as generated text from API.")
+                logger.debug(f"API Call Attempt {attempt + 1} of {retries} to {effective_model_name}.")
+                response = await model_to_use.generate_content_async(prompt)
+                
+                if not response.candidates:
+                    logger.warning("Gemini API returned no candidates.")
+                    if response.prompt_feedback and response.prompt_feedback.block_reason:
+                        logger.error(f"Prompt blocked. Reason: {response.prompt_feedback.block_reason}")
+                        logger.error(f"Prompt feedback details: {response.prompt_feedback.safety_ratings}")
+                        raise GoogleAPIError(f"Prompt blocked by API. Reason: {response.prompt_feedback.block_reason}")
                     return ""
+
+                generated_text = response.candidates[0].content.parts[0].text
+                logger.debug(f"Raw response from Gemini API:\n--RESPONSE START--\n{generated_text}\n--RESPONSE END--")
+                
                 if output_format == "code":
                     cleaned_code = self._clean_llm_output(generated_text)
                     logger.debug(f"Cleaned code:\n--CLEANED CODE START--\n{cleaned_code}\n--CLEANED CODE END--")
                     return cleaned_code
-                else: # output_format == "diff"
+                else:  # output_format == "diff"
                     logger.debug(f"Returning raw diff text:\n--DIFF TEXT START--\n{generated_text}\n--DIFF TEXT END--")
-                    return generated_text # Return raw diff text
-            except (APIError, InternalServerError, TimeoutError, RateLimitError, APITimeoutError, AuthenticationError, BadRequestError) as e:
-                logger.warning(f"API error on attempt {attempt + 1}: {type(e).__name__} - {e}. Retrying in {delay}s...")
+                    return generated_text  # Return raw diff text
+            except (InternalServerError, DeadlineExceeded, GoogleAPIError) as e:
+                logger.warning(f"Gemini API error on attempt {attempt + 1}: {type(e).__name__} - {e}. Retrying in {delay}s...")
                 if attempt < retries - 1:
                     await asyncio.sleep(delay)
                     delay *= 2 
                 else:
-                    logger.error(f"API call failed after {retries} retries for model {provider_name}.")
+                    logger.error(f"Gemini API call failed after {retries} retries for model {effective_model_name}.")
                     raise
             except Exception as e:
-                logger.error(f"An unexpected error occurred during code generation with {provider_name}: {e}", exc_info=True)
+                logger.error(f"An unexpected error occurred during code generation with {effective_model_name}: {e}", exc_info=True)
                 raise
-
-        logger.error(f"Code generation failed for model {provider_name} after all retries.")
+        
+        logger.error(f"Code generation failed for model {effective_model_name} after all retries.")
         return ""
 
     def _clean_llm_output(self, raw_code: str) -> str:
@@ -140,6 +155,8 @@ Make sure that the changes you propose are consistent with each other.
         =======
         # New code block
         >>>>>>> REPLACE
+        
+        Uses fuzzy matching to handle slight variations in whitespace and indentation.
         """
         logger.info("Attempting to apply diff.")
         logger.debug(f"Parent code length: {len(parent_code)}")
@@ -148,19 +165,113 @@ Make sure that the changes you propose are consistent with each other.
         modified_code = parent_code
         diff_pattern = re.compile(r"<<<<<<< SEARCH\s*?\n(.*?)\n=======\s*?\n(.*?)\n>>>>>>> REPLACE", re.DOTALL)
         
+        # This will store the positions where we've already applied replacements
+        # to avoid multiple replacements at the same location
+        replacements_made = []
+        
         for match in diff_pattern.finditer(diff_text):
             search_block = match.group(1)
             replace_block = match.group(2)
-            search_block_normalized = search_block.replace('\r\n', '\n').replace('\r', '\n')
+            
+            # Normalize both search block and parent code for comparison
+            search_block_normalized = search_block.replace('\r\n', '\n').replace('\r', '\n').strip()
             
             try:
+                # First try exact match
                 if search_block_normalized in modified_code:
+                    logger.debug(f"Found exact match for SEARCH block")
                     modified_code = modified_code.replace(search_block_normalized, replace_block, 1)
                     logger.debug(f"Applied one diff block. SEARCH:\n{search_block_normalized}\nREPLACE:\n{replace_block}")
                 else:
-                    logger.warning(f"Diff application: SEARCH block not found in current code state:\n{search_block_normalized}")
+                    # If exact match fails, try normalizing whitespace variations
+                    normalized_search = re.sub(r'\s+', ' ', search_block_normalized)
+                    normalized_code = re.sub(r'\s+', ' ', modified_code)
+                    
+                    if normalized_search in normalized_code:
+                        logger.debug(f"Found match after whitespace normalization")
+                        # Find the start position in the original string
+                        start_pos = normalized_code.find(normalized_search)
+                        
+                        # Find corresponding position in the original code
+                        original_pos = 0
+                        norm_pos = 0
+                        
+                        while norm_pos < start_pos and original_pos < len(modified_code):
+                            if not modified_code[original_pos].isspace() or (
+                                original_pos > 0 and 
+                                modified_code[original_pos].isspace() and 
+                                not modified_code[original_pos-1].isspace()
+                            ):
+                                norm_pos += 1
+                            original_pos += 1
+                        
+                        # Find the end position
+                        end_pos = original_pos
+                        remaining_chars = len(normalized_search)
+                        
+                        while remaining_chars > 0 and end_pos < len(modified_code):
+                            if not modified_code[end_pos].isspace() or (
+                                end_pos > 0 and 
+                                modified_code[end_pos].isspace() and 
+                                not modified_code[end_pos-1].isspace()
+                            ):
+                                remaining_chars -= 1
+                            end_pos += 1
+                        
+                        # Check if this position overlaps with any previous replacements
+                        overlap = False
+                        for start, end in replacements_made:
+                            if (start <= original_pos <= end) or (start <= end_pos <= end):
+                                overlap = True
+                                break
+                        
+                        if not overlap:
+                            # Get the actual segment to replace
+                            actual_segment = modified_code[original_pos:end_pos]
+                            logger.debug(f"Replacing segment:\n{actual_segment}\nWith:\n{replace_block}")
+                            
+                            # Replace the segment
+                            modified_code = modified_code[:original_pos] + replace_block + modified_code[end_pos:]
+                            
+                            # Record this replacement
+                            replacements_made.append((original_pos, original_pos + len(replace_block)))
+                        else:
+                            logger.warning(f"Diff application: Skipping overlapping replacement")
+                    else:
+                        # Last resort: try line-by-line search 
+                        search_lines = search_block_normalized.splitlines()
+                        parent_lines = modified_code.splitlines()
+                        
+                        # Need at least 3 lines for a meaningful match
+                        if len(search_lines) >= 3:
+                            # Try to find the first and last lines
+                            first_line = search_lines[0].strip()
+                            last_line = search_lines[-1].strip()
+                            
+                            for i, line in enumerate(parent_lines):
+                                if first_line in line.strip() and i + len(search_lines) <= len(parent_lines):
+                                    # Check if last line also matches
+                                    if last_line in parent_lines[i + len(search_lines) - 1].strip():
+                                        # Found a potential match - rebuild the segment
+                                        matched_segment = '\n'.join(parent_lines[i:i + len(search_lines)])
+                                        
+                                        # Replace this segment
+                                        modified_code = '\n'.join(
+                                            parent_lines[:i] + 
+                                            replace_block.splitlines() + 
+                                            parent_lines[i + len(search_lines):]
+                                        )
+                                        logger.debug(f"Applied line-by-line match. SEARCH:\n{matched_segment}\nREPLACE:\n{replace_block}")
+                                        break
+                            else:
+                                logger.warning(f"Diff application: SEARCH block not found even with line-by-line search:\n{search_block_normalized}")
+                        else:
+                            logger.warning(f"Diff application: SEARCH block not found in current code state:\n{search_block_normalized}")
             except re.error as e:
                 logger.error(f"Regex error during diff application: {e}")
+                continue
+            except Exception as e:
+                logger.error(f"Error during diff application: {e}", exc_info=True)
                 continue
         
         if modified_code == parent_code and diff_text.strip():
@@ -181,8 +292,8 @@ Make sure that the changes you propose are consistent with each other.
         logger.debug(f"CodeGeneratorAgent.execute called. Output format: {output_format}")
         
         generated_output = await self.generate_code(
-            prompt=prompt,
-            provider_name=model_name,
+            prompt=prompt, 
+            model_name=model_name, 
             temperature=temperature,
             output_format=output_format
         )

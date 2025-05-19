@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Attempt to load the API key
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_KEY = os.getenv("")
 
 # Fallback for development if .env is not set or key is not found,
 # but ensure this is handled securely in production.
@@ -18,7 +18,7 @@ if not GEMINI_API_KEY:
     # For local testing without a .env file, you can temporarily set it like:
     # GEMINI_API_KEY = "YOUR_ACTUAL_API_KEY_HERE"
     print("Warning: GEMINI_API_KEY not found in .env or environment. Using a NON-FUNCTIONAL placeholder. Please create a .env file with your valid API key.")
-    GEMINI_API_KEY = ""
+    GEMINI_API_KEY = "" # Obvious placeholder
 
 # LLM Model Configuration
 GEMINI_PRO_MODEL_NAME = "gemini-2.5-flash-preview-04-17" # Using a more capable model

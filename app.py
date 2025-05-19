@@ -255,7 +255,7 @@ FIB_EXAMPLES = '''[
 ]'''
 
 def set_fib_example():
-    """Populate the form with the Fibonacci task example."""
+    """Set the UI to a Fibonacci example task."""
     return (
         "fibonacci_task",
         "Write a Python function that computes the nth Fibonacci number (0-indexed), where fib(0)=0 and fib(1)=1.",
@@ -267,6 +267,11 @@ def set_fib_example():
 # Create the Gradio interface
 with gr.Blocks(title="OpenAlpha_Evolve") as demo:
     gr.Markdown("# 🧬 OpenAlpha_Evolve: AI-Driven Algorithm Evolution")
+    gr.Markdown("""
+    * **Custom Tasks:** Write your own problem definition, examples, and allowed imports in the fields below.
+    * **Multi-LLM Support:** Additional LLM backends (OpenAI GPT, Anthropic Claude, etc.) coming soon.
+    * **Evolutionary Budget:** For novel, complex solutions consider using large budgets (e.g., 100+ generations and population sizes of hundreds or thousands).
+    """)
     
     if API_KEY_WARNING:
         gr.Markdown(f"## ⚠️ {API_KEY_WARNING}")
@@ -325,8 +330,9 @@ with gr.Blocks(title="OpenAlpha_Evolve") as demo:
                 )
             
             with gr.Row():
-                fib_btn = gr.Button("🔢 Fibonacci Example")
-                run_btn = gr.Button("🚀 Run Evolution", variant="primary")
+                example_btn = gr.Button("📘 Fibonacci Example")
+            
+            run_btn = gr.Button("🚀 Run Evolution", variant="primary")
         
         with gr.Column(scale=1):
             with gr.Tab("Results"):
@@ -335,8 +341,7 @@ with gr.Blocks(title="OpenAlpha_Evolve") as demo:
             # No Live Logs tab: progress is shown in terminal only
     
     # Event handlers
-    # Example setter for Fibonacci
-    fib_btn.click(
+    example_btn.click(
         set_fib_example,
         outputs=[task_id, description, function_name, examples_json, allowed_imports]
     )

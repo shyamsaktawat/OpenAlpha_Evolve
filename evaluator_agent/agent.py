@@ -20,7 +20,7 @@ class EvaluatorAgent(EvaluatorAgentInterface, BaseAgent):
     def __init__(self, task_definition: Optional[TaskDefinition] = None):
         super().__init__()
         self.task_definition = task_definition
-        self.evaluation_model_name = settings.EVALUATION_KEY
+        self.evaluation_model_name = settings.GEMINI_EVALUATION_MODEL
         self.evaluation_timeout_seconds = settings.EVALUATION_TIMEOUT_SECONDS
         logger.info(f"EvaluatorAgent initialized with model: {self.evaluation_model_name}, timeout: {self.evaluation_timeout_seconds}s")
         if self.task_definition:
@@ -65,6 +65,8 @@ class EvaluatorAgent(EvaluatorAgentInterface, BaseAgent):
         test_cases_str = json.dumps(task_for_examples.input_output_examples)
         test_cases_str = test_cases_str.replace('"Infinity"', 'float("inf")')
         test_cases_str = test_cases_str.replace('"NaN"', 'float("nan")')
+        # Convert JSON boolean and null literals to Python equivalents
+        test_cases_str = test_cases_str.replace('true', 'True').replace('false', 'False').replace('null', 'None')
 
         test_harness_code = f"""
 import json
