@@ -266,10 +266,10 @@ def set_fib_example():
 
 # Create the Gradio interface
 with gr.Blocks(title="OpenAlpha_Evolve") as demo:
-    gr.Markdown("# 🧬 OpenAlpha_Evolve: AI-Driven Algorithm Evolution")
+    gr.Markdown("# 🧬 OpenAlpha_Evolve: Autonomous Algorithm Evolution")
     gr.Markdown("""
     * **Custom Tasks:** Write your own problem definition, examples, and allowed imports in the fields below.
-    * **Multi-LLM Support:** Additional LLM backends (OpenAI GPT, Anthropic Claude, etc.) coming soon.
+    * **Multi-Model Support:** Additional language model backends coming soon.
     * **Evolutionary Budget:** For novel, complex solutions consider using large budgets (e.g., 100+ generations and population sizes of hundreds or thousands).
     """)
     

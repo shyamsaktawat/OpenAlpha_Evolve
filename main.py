@@ -28,7 +28,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 async def main():
-    logger.info("Starting OpenAlpha_Evolve an AI an autonomous algorithmic agent")
+    logger.info("Starting OpenAlpha_Evolve autonomous algorithmic evolution")
     logger.info(f"Configuration: Population Size={settings.POPULATION_SIZE}, Generations={settings.GENERATIONS}")
     logger.info(f"LLM Models: Pro={settings.GEMINI_PRO_MODEL_NAME}, Flash={settings.GEMINI_FLASH_MODEL_NAME}, Eval={settings.GEMINI_EVALUATION_MODEL}")
 
@@ -124,7 +124,7 @@ async def main():
             logger.info(f"Final Best Program {i+1} ID: {program.id}")
             logger.info(f"Final Best Program {i+1} Fitness: {program.fitness_scores}")
             logger.info(f"Final Best Program {i+1} Code:\n{program.code}")
-        else:
+    else:
         logger.info("Evolutionary process completed, but no suitable programs were found.")
 
     logger.info("OpenAlpha_Evolve run finished.")
