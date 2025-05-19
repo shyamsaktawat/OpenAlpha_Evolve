@@ -9,6 +9,9 @@ Our mission is to provide an accessible, understandable, and extensible platform
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 
 ---
+![image](https://github.com/user-attachments/assets/ff498bb7-5608-46ca-9357-fd9b55b76800)
+![image](https://github.com/user-attachments/assets/ad1d94eb-d589-4c49-8215-9ff38c607235)
+
 
 ## ✨ The Vision: AI-Driven Algorithmic Innovation
 
