@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
                              
-GEMINI_API_KEY = os.getenv("")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
                                                                   
                                                     
@@ -18,7 +18,7 @@ if not GEMINI_API_KEY:
                                                                              
                                                  
     print("Warning: GEMINI_API_KEY not found in .env or environment. Using a NON-FUNCTIONAL placeholder. Please create a .env file with your valid API key.")
-    GEMINI_API_KEY = ""                      
+    GEMINI_API_KEY = "Your Gemini Api key"                      
 
                          
 GEMINI_PRO_MODEL_NAME = "gemini-2.5-flash-preview-04-17"                             
