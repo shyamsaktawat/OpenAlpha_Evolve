@@ -1,4 +1,4 @@
-# Core components, interfaces, data models 
+
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, Union
 from dataclasses import dataclass, field
@@ -7,31 +7,31 @@ from dataclasses import dataclass, field
 class Program:
     id: str
     code: str
-    fitness_scores: Dict[str, float] = field(default_factory=dict) # e.g., {"correctness": 1.0, "runtime_ms": 50.0}
+    fitness_scores: Dict[str, float] = field(default_factory=dict)
     generation: int = 0
     parent_id: Optional[str] = None
     errors: List[str] = field(default_factory=list)
-    status: str = "unevaluated" # e.g., unevaluated, evaluating, evaluated, failed_evaluation
+    status: str = "unevaluated"
 
 @dataclass
 class TaskDefinition:
     id: str
-    description: str # Natural language description of the problem
-    function_name_to_evolve: Optional[str] = None # Name of the function the LLM should generate/evolve
-    input_output_examples: Optional[List[Dict[str, Any]]] = None # For testing, e.g. [{"input": ..., "output": ...}]
-    evaluation_criteria: Optional[Dict[str, Any]] = None # e.g., {"target_metric": "runtime_ms", "goal": "minimize"}
+    description: str
+    function_name_to_evolve: Optional[str] = None
+    input_output_examples: Optional[List[Dict[str, Any]]] = None
+    evaluation_criteria: Optional[Dict[str, Any]] = None
     initial_code_prompt: Optional[str] = "Provide an initial Python solution for the following problem:"
-    allowed_imports: Optional[List[str]] = None # MODIFIED: Added allowed_imports
+    allowed_imports: Optional[List[str]] = None
 
 class BaseAgent(ABC):
-    """Base class for all agents."""
+    """"""
     @abstractmethod
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         self.config = config or {}
 
     @abstractmethod
     async def execute(self, *args, **kwargs) -> Any:
-        """Main execution method for an agent."""
+        """"""
         pass
 
 class TaskManagerInterface(BaseAgent):
@@ -102,4 +102,3 @@ class MonitoringAgentInterface(BaseAgent):
     async def report_status(self):
         pass
 
-# You can add more specific data classes or interfaces here as needed 

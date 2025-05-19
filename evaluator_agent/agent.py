@@ -1,4 +1,4 @@
-# Evaluator Agent 
+
 import time
 import logging
 import traceback
@@ -61,104 +61,14 @@ class EvaluatorAgent(EvaluatorAgentInterface, BaseAgent):
                 return f"float('{str(arg)}')"
             return json.dumps(arg)
 
-        # Convert input_output_examples to a string with proper Python values for Infinity
+
         test_cases_str = json.dumps(task_for_examples.input_output_examples)
         test_cases_str = test_cases_str.replace('"Infinity"', 'float("inf")')
         test_cases_str = test_cases_str.replace('"NaN"', 'float("nan")')
-        # Convert JSON boolean and null literals to Python equivalents
+
         test_cases_str = test_cases_str.replace('true', 'True').replace('false', 'False').replace('null', 'None')
 
-        test_harness_code = f"""
-import json
-import time
-import sys
-import math  # Import math for inf/nan constants
-
-# User's code (function to be tested)
-{code}
-
-# Test execution logic
-results = []
-total_execution_time = 0
-num_tests = 0
-
-# Special constants for test cases
-Infinity = float('inf')
-NaN = float('nan')
-
-test_cases = {test_cases_str} 
-function_to_test_name = "{task_for_examples.function_name_to_evolve}"
-
-# Make sure the function_to_test is available in the global scope
-if function_to_test_name not in globals():
-    # Attempt to find it if it was defined inside a class (common for LLM output)
-    # This is a simple heuristic and might need refinement.
-    found_func = None
-    for name, obj in list(globals().items()):
-        if isinstance(obj, type):
-            if hasattr(obj, function_to_test_name):
-                method = getattr(obj, function_to_test_name)
-                if callable(method):
-                    globals()[function_to_test_name] = method
-                    found_func = True
-                    break
-    if not found_func:
-        print(json.dumps({{"error": f"Function '{{function_to_test_name}}' not found in the global scope or as a callable method of a defined class."}}))
-        sys.exit(1)
-        
-function_to_test = globals()[function_to_test_name]
-
-for i, test_case in enumerate(test_cases):
-    input_args = test_case.get("input")
-    
-    start_time = time.perf_counter()
-    try:
-        if isinstance(input_args, list):
-            actual_output = function_to_test(*input_args)
-        elif isinstance(input_args, dict):
-            actual_output = function_to_test(**input_args)
-        elif input_args is None:
-             actual_output = function_to_test()
-        else:
-            actual_output = function_to_test(input_args)
-            
-        end_time = time.perf_counter()
-        execution_time_ms = (end_time - start_time) * 1000
-        total_execution_time += execution_time_ms
-        num_tests += 1
-        results.append({{"test_case_id": i, "output": actual_output, "runtime_ms": execution_time_ms, "status": "success"}})
-    except Exception as e:
-        end_time = time.perf_counter()
-        execution_time_ms = (end_time - start_time) * 1000
-        error_output = {{
-            "test_case_id": i,
-            "error": str(e), 
-            "error_type": type(e).__name__,
-            "runtime_ms": execution_time_ms,
-            "status": "error"
-        }}
-        try:
-            json.dumps(error_output)
-        except TypeError:
-            error_output["error"] = "Unserializable error object"
-        results.append(error_output)
-
-final_output = {{"test_outputs": results}}
-if num_tests > 0:
-    final_output["average_runtime_ms"] = total_execution_time / num_tests
-
-def custom_json_serializer(obj):
-    if isinstance(obj, float):
-        if obj == float('inf'):
-            return 'Infinity'
-        elif obj == float('-inf'):
-            return '-Infinity'
-        elif obj != obj:
-            return 'NaN'
-    raise TypeError(f"Object of type {{type(obj).__name__}} is not JSON serializable")
-
-print(json.dumps(final_output, default=custom_json_serializer))
-"""
+        test_harness_code = f""""""
         with open(temp_file_path, "w") as f:
             f.write(test_harness_code)
 
@@ -322,12 +232,11 @@ print(json.dumps(final_output, default=custom_json_serializer))
 
     def _compare_outputs(self, actual: Any, expected: Any) -> bool:
         logger.debug(f"Comparing outputs. Actual: {actual}, Expected: {expected}")
-        # ... (rest of the _compare_outputs logic from your version)
+
         return actual == expected
 
-# Removed the old __main__ block from this file, 
-# as TaskManagerAgent should be the entry point for full runs.
-# The more detailed __main__ from your version of EvaluatorAgent was good for unit testing it.
-# For now, I am removing it to keep the agent file clean.
-# If you need to unit test EvaluatorAgent specifically, 
-# we can re-add a similar main block or create separate test files. 
+
+
+
+
+

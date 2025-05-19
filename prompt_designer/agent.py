@@ -1,4 +1,4 @@
-# Prompt Designer Agent 
+
 from typing import Optional, Dict, Any
 import logging
 
@@ -14,13 +14,13 @@ class PromptDesignerAgent(PromptDesignerInterface, BaseAgent):
 
     def design_initial_prompt(self) -> str:
         logger.info(f"Designing initial prompt for task: {self.task_definition.id}")
-        # This prompt should request full code, not a diff.
+
         prompt = (
             f"You are an expert Python programmer. Your task is to write a Python function based on the following specifications.\n\n"
             f"Task Description: {self.task_definition.description}\n\n"
             f"Function to Implement: `{self.task_definition.function_name_to_evolve}`\n\n"
             f"Input/Output Examples:\n"
-            # Format examples for clarity
+
             f"{self._format_input_output_examples()}\n\n"
             f"Evaluation Criteria: {self.task_definition.evaluation_criteria}\n\n"
             f"Allowed Standard Library Imports: {self.task_definition.allowed_imports}. Do not use any other external libraries or packages.\n\n"
@@ -48,8 +48,8 @@ class PromptDesignerAgent(PromptDesignerInterface, BaseAgent):
 
         correctness = evaluation_feedback.get("correctness_score", None)
         runtime = evaluation_feedback.get("runtime_ms", None)
-        errors = evaluation_feedback.get("errors", []) # Ensure errors is a list
-        # stdout = evaluation_feedback.get("stdout", None) # Potentially useful but can be long
+        errors = evaluation_feedback.get("errors", [])
+
         stderr = evaluation_feedback.get("stderr", None)
 
         feedback_parts = []
@@ -85,9 +85,9 @@ class PromptDesignerAgent(PromptDesignerInterface, BaseAgent):
             "Propose improvements to the 'Current Code' below by providing your changes as a sequence of diff blocks. "
             "Each diff block must follow this exact format:\n"
             "<<<<<<< SEARCH\n"
-            "# Exact original code lines to be found and replaced\n"
+            "
             "=======\n"
-            "# New code lines to replace the original\n"
+            "
             ">>>>>>> REPLACE\n\n"
             "- The SEARCH block must be an *exact* segment from the 'Current Code'. Do not paraphrase or shorten it."
             "- If you are adding new code where nothing existed, the SEARCH block can be a comment indicating the location, or an adjacent existing line."
@@ -126,9 +126,9 @@ class PromptDesignerAgent(PromptDesignerInterface, BaseAgent):
             "Propose fixes to the 'Buggy Code' below by providing your changes as a sequence of diff blocks. "
             "Each diff block must follow this exact format:\n"
             "<<<<<<< SEARCH\n"
-            "# Exact original code lines to be found and replaced\n"
+            "
             "=======\n"
-            "# New code lines to replace the original\n"
+            "
             ">>>>>>> REPLACE\n\n"
             "- The SEARCH block must be an *exact* segment from the 'Buggy Code'."
             "- Provide all suggested changes as one or more such diff blocks. Do not include any other text, explanations, or markdown outside these blocks."
@@ -154,7 +154,7 @@ class PromptDesignerAgent(PromptDesignerInterface, BaseAgent):
     async def execute(self, *args, **kwargs) -> Any:
         raise NotImplementedError("PromptDesignerAgent.execute() is not the primary way to use this agent. Call specific design methods.")
 
-# Example Usage:
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
 
@@ -177,7 +177,7 @@ if __name__ == '__main__':
 
     sample_program_mutation = Program(
         id="prog_mut_001",
-        code="def sum_list(numbers):\n  # Slightly off logic\n  s = 0\n  for n in numbers:\n    s += n\n  return s if numbers else 1", # Bug for empty list
+        code="def sum_list(numbers):\n
         fitness_scores={"correctness_score": 0.5, "runtime_ms": 5.0},
         generation=1,
         errors=["Test case failed: Input [], Expected 0, Got 1"],
@@ -195,7 +195,7 @@ if __name__ == '__main__':
 
     sample_program_buggy = Program(
         id="prog_bug_002",
-        code="def sum_list(numbers):\n  # Buggy implementation causing TypeError\n  if not numbers:\n    return 0\n  return sum(numbers) + \"oops\"",
+        code="def sum_list(numbers):\n
         fitness_scores={"correctness_score": 0.0, "runtime_ms": 2.0},
         generation=2,
         errors=["TypeError: unsupported operand type(s) for +: 'int' and 'str'"],

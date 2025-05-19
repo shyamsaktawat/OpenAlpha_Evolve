@@ -1,11 +1,11 @@
-# Code Generator Agent 
+
 import google.generativeai as genai
 from typing import Optional, Dict, Any
 import logging
-import asyncio # Added for retry sleep
-from google.api_core.exceptions import InternalServerError, GoogleAPIError, DeadlineExceeded # For specific error handling
+import asyncio
+from google.api_core.exceptions import InternalServerError, GoogleAPIError, DeadlineExceeded
 import time
-import re # Added for diff application
+import re
 
 from core.interfaces import CodeGeneratorInterface, BaseAgent, Program
 from config import settings
@@ -18,57 +18,22 @@ class CodeGeneratorAgent(CodeGeneratorInterface):
         if not settings.GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY not found in settings. Please set it in your .env file or config.")
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        self.model_name = settings.GEMINI_PRO_MODEL_NAME # Default to pro, can be overridden by task
+        self.model_name = settings.GEMINI_PRO_MODEL_NAME
         self.generation_config = genai.types.GenerationConfig(
             temperature=1.3, 
             top_p=0.9,
             top_k=40
         )
         logger.info(f"CodeGeneratorAgent initialized with model: {self.model_name}")
-        # self.max_retries and self.retry_delay_seconds are not used from instance, settings are used directly
+
 
     async def generate_code(self, prompt: str, model_name: Optional[str] = None, temperature: Optional[float] = None, output_format: str = "code") -> str:
         effective_model_name = model_name if model_name else self.model_name
         logger.info(f"Attempting to generate code using model: {effective_model_name}, output_format: {output_format}")
         
-        # Add diff instructions if requested
+
         if output_format == "diff":
-            prompt += '''
-
-I need you to provide your changes as a sequence of diff blocks in the following format:
-
-<<<<<<< SEARCH
-# Original code block to be found and replaced (COPY EXACTLY from original)
-=======
-# New code block to replace the original
->>>>>>> REPLACE
-
-IMPORTANT DIFF GUIDELINES:
-1. The SEARCH block MUST be an EXACT copy of code from the original - match whitespace, indentation, and line breaks precisely
-2. Each SEARCH block should be large enough (3-5 lines minimum) to uniquely identify where the change should be made
-3. Include context around the specific line(s) you want to change
-4. Make multiple separate diff blocks if you need to change different parts of the code
-5. For each diff, the SEARCH and REPLACE blocks must be complete, valid code segments
-
-Example of a good diff:
-<<<<<<< SEARCH
-def calculate_sum(numbers):
-    result = 0
-    for num in numbers:
-        result += num
-    return result
-=======
-def calculate_sum(numbers):
-    if not numbers:
-        return 0
-    result = 0
-    for num in numbers:
-        result += num
-    return result
->>>>>>> REPLACE
-
-Make sure your diff can be applied correctly!
-'''
+            prompt += ''''''
         
         logger.debug(f"Received prompt for code generation (format: {output_format}):\n--PROMPT START--\n{prompt}\n--PROMPT END--")
         
@@ -105,12 +70,12 @@ Make sure your diff can be applied correctly!
                 logger.debug(f"Raw response from Gemini API:\n--RESPONSE START--\n{generated_text}\n--RESPONSE END--")
                 
                 if output_format == "code":
-                    cleaned_code = self._clean_llm_output(generated_text)
-                    logger.debug(f"Cleaned code:\n--CLEANED CODE START--\n{cleaned_code}\n--CLEANED CODE END--")
-                    return cleaned_code
-                else:  # output_format == "diff"
+                cleaned_code = self._clean_llm_output(generated_text)
+                logger.debug(f"Cleaned code:\n--CLEANED CODE START--\n{cleaned_code}\n--CLEANED CODE END--")
+                return cleaned_code
+                else:
                     logger.debug(f"Returning raw diff text:\n--DIFF TEXT START--\n{generated_text}\n--DIFF TEXT END--")
-                    return generated_text  # Return raw diff text
+                    return generated_text
             except (InternalServerError, DeadlineExceeded, GoogleAPIError) as e:
                 logger.warning(f"Gemini API error on attempt {attempt + 1}: {type(e).__name__} - {e}. Retrying in {delay}s...")
                 if attempt < retries - 1:
@@ -127,10 +92,7 @@ Make sure your diff can be applied correctly!
         return ""
 
     def _clean_llm_output(self, raw_code: str) -> str:
-        """
-        Cleans the raw output from the LLM, typically removing markdown code fences.
-        Example: ```python\ncode\n``` -> code
-        """
+        """"""
         logger.debug(f"Attempting to clean raw LLM output. Input length: {len(raw_code)}")
         code = raw_code.strip()
         
@@ -147,17 +109,7 @@ Make sure your diff can be applied correctly!
         return code
 
     def _apply_diff(self, parent_code: str, diff_text: str) -> str:
-        """
-        Applies a diff in the AlphaEvolve format to the parent code.
-        Diff format:
-        <<<<<<< SEARCH
-        # Original code block
-        =======
-        # New code block
-        >>>>>>> REPLACE
-        
-        Uses fuzzy matching to handle slight variations in whitespace and indentation.
-        """
+        """"""
         logger.info("Attempting to apply diff.")
         logger.debug(f"Parent code length: {len(parent_code)}")
         logger.debug(f"Diff text:\n{diff_text}")
@@ -165,34 +117,34 @@ Make sure your diff can be applied correctly!
         modified_code = parent_code
         diff_pattern = re.compile(r"<<<<<<< SEARCH\s*?\n(.*?)\n=======\s*?\n(.*?)\n>>>>>>> REPLACE", re.DOTALL)
         
-        # This will store the positions where we've already applied replacements
-        # to avoid multiple replacements at the same location
+
+
         replacements_made = []
         
         for match in diff_pattern.finditer(diff_text):
             search_block = match.group(1)
             replace_block = match.group(2)
             
-            # Normalize both search block and parent code for comparison
+
             search_block_normalized = search_block.replace('\r\n', '\n').replace('\r', '\n').strip()
             
             try:
-                # First try exact match
+
                 if search_block_normalized in modified_code:
                     logger.debug(f"Found exact match for SEARCH block")
                     modified_code = modified_code.replace(search_block_normalized, replace_block, 1)
                     logger.debug(f"Applied one diff block. SEARCH:\n{search_block_normalized}\nREPLACE:\n{replace_block}")
                 else:
-                    # If exact match fails, try normalizing whitespace variations
+
                     normalized_search = re.sub(r'\s+', ' ', search_block_normalized)
                     normalized_code = re.sub(r'\s+', ' ', modified_code)
                     
                     if normalized_search in normalized_code:
                         logger.debug(f"Found match after whitespace normalization")
-                        # Find the start position in the original string
+
                         start_pos = normalized_code.find(normalized_search)
                         
-                        # Find corresponding position in the original code
+
                         original_pos = 0
                         norm_pos = 0
                         
@@ -205,7 +157,7 @@ Make sure your diff can be applied correctly!
                                 norm_pos += 1
                             original_pos += 1
                         
-                        # Find the end position
+
                         end_pos = original_pos
                         remaining_chars = len(normalized_search)
                         
@@ -218,7 +170,7 @@ Make sure your diff can be applied correctly!
                                 remaining_chars -= 1
                             end_pos += 1
                         
-                        # Check if this position overlaps with any previous replacements
+
                         overlap = False
                         for start, end in replacements_made:
                             if (start <= original_pos <= end) or (start <= end_pos <= end):
@@ -226,36 +178,36 @@ Make sure your diff can be applied correctly!
                                 break
                         
                         if not overlap:
-                            # Get the actual segment to replace
+
                             actual_segment = modified_code[original_pos:end_pos]
                             logger.debug(f"Replacing segment:\n{actual_segment}\nWith:\n{replace_block}")
                             
-                            # Replace the segment
+
                             modified_code = modified_code[:original_pos] + replace_block + modified_code[end_pos:]
                             
-                            # Record this replacement
+
                             replacements_made.append((original_pos, original_pos + len(replace_block)))
                         else:
                             logger.warning(f"Diff application: Skipping overlapping replacement")
                     else:
-                        # Last resort: try line-by-line search 
+
                         search_lines = search_block_normalized.splitlines()
                         parent_lines = modified_code.splitlines()
                         
-                        # Need at least 3 lines for a meaningful match
+
                         if len(search_lines) >= 3:
-                            # Try to find the first and last lines
+
                             first_line = search_lines[0].strip()
                             last_line = search_lines[-1].strip()
                             
                             for i, line in enumerate(parent_lines):
                                 if first_line in line.strip() and i + len(search_lines) <= len(parent_lines):
-                                    # Check if last line also matches
+
                                     if last_line in parent_lines[i + len(search_lines) - 1].strip():
-                                        # Found a potential match - rebuild the segment
+
                                         matched_segment = '\n'.join(parent_lines[i:i + len(search_lines)])
                                         
-                                        # Replace this segment
+
                                         modified_code = '\n'.join(
                                             parent_lines[:i] + 
                                             replace_block.splitlines() + 
@@ -284,11 +236,7 @@ Make sure your diff can be applied correctly!
         return modified_code
 
     async def execute(self, prompt: str, model_name: Optional[str] = None, temperature: Optional[float] = None, output_format: str = "code", parent_code_for_diff: Optional[str] = None) -> str:
-        """
-        Generic execution method.
-        If output_format is 'diff', it generates a diff and applies it to parent_code_for_diff.
-        Otherwise, it generates full code.
-        """
+        """"""
         logger.debug(f"CodeGeneratorAgent.execute called. Output format: {output_format}")
         
         generated_output = await self.generate_code(
@@ -314,52 +262,20 @@ Make sure your diff can be applied correctly!
             except Exception as e:
                 logger.error(f"Error applying diff: {e}. Returning raw diff text.", exc_info=True)
                 return generated_output
-        else: # "code"
+        else:
             return generated_output
 
-# Example Usage (for testing this agent directly)
+
 if __name__ == '__main__':
     import asyncio
     logging.basicConfig(level=logging.DEBUG)
     
     async def test_diff_application():
         agent = CodeGeneratorAgent()
-        parent = """Line 1
-Line 2 to be replaced
-Line 3
-Another block
-To be changed
-End of block
-Final line"""
+        parent = """"""
 
-        diff = """Some preamble text from LLM...
-<<<<<<< SEARCH
-Line 2 to be replaced
-=======
-Line 2 has been successfully replaced
->>>>>>> REPLACE
-
-Some other text...
-
-<<<<<<< SEARCH
-Another block
-To be changed
-End of block
-=======
-This
-Entire
-Block
-Is New
->>>>>>> REPLACE
-Trailing text..."""
-        expected_output = """Line 1
-Line 2 has been successfully replaced
-Line 3
-This
-Entire
-Block
-Is New
-Final line"""
+        diff = """"""
+        expected_output = """"""
         
         print("--- Testing _apply_diff directly ---")
         result = agent._apply_diff(parent, diff)
@@ -395,34 +311,20 @@ Final line"""
         print("----------------------")
         assert "def" in generated_full_code, "Full code generation seems to have failed."
 
-        parent_code_for_llm_diff = '''
-def greet(name):
-    return f"Hello, {name}!"
+        parent_code_for_llm_diff = ''''''
+        test_prompt_diff_gen = f''''''
 
-def process_data(data):
-    # TODO: Implement data processing
-    return data * 2 # Simple placeholder
-'''
-        test_prompt_diff_gen = f'''
-Current code:
-```python
-{parent_code_for_llm_diff}
-```
-Task: Modify the `process_data` function to add 5 to the result instead of multiplying by 2.
-Also, change the greeting in `greet` to "Hi, {name}!!!".
-'''
-        # Commenting out live LLM call for automated testing in this context
-        # generated_diff_and_applied = await agent.execute(
-        #     prompt=test_prompt_diff_gen,
-        #     temperature=0.5,
-        #     output_format="diff",
-        #     parent_code_for_diff=parent_code_for_llm_diff
-        # )
-        # print("\n--- Generated Diff and Applied (Live LLM Call) ---")
-        # print(generated_diff_and_applied)
-        # print("----------------------")
-        # assert "data + 5" in generated_diff_and_applied, "LLM diff for process_data not applied as expected."
-        # assert "Hi, name!!!" in generated_diff_and_applied, "LLM diff for greet not applied as expected."
+
+
+
+
+
+
+
+
+
+
+
         
         async def mock_generate_empty_diff(prompt, model_name, temperature, output_format):
             return "  \n  " 
@@ -442,7 +344,7 @@ Also, change the greeting in `greet` to "Hi, {name}!!!".
 
     async def main_tests():
         await test_diff_application()
-        # await test_generation() # Uncomment to run live LLM tests for generate_code
+
         print("\nAll selected local tests in CodeGeneratorAgent passed.")
 
     asyncio.run(main_tests())
