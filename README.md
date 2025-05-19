@@ -10,7 +10,8 @@ Our mission is to provide an accessible, understandable, and extensible platform
 
 ---
 ![image](https://github.com/user-attachments/assets/ff498bb7-5608-46ca-9357-fd9b55b76800)
-![image](https://github.com/user-attachments/assets/ad1d94eb-d589-4c49-8215-9ff38c607235)
+![image](https://github.com/user-attachments/assets/c1b4184a-f5d5-43fd-8f50-3e729c104e11)
+
 
 
 ## ✨ The Vision: AI-Driven Algorithmic Innovation
