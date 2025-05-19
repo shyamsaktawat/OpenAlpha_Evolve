@@ -1,3 +1,4 @@
+                     
 import logging
 import asyncio
 import uuid
@@ -10,10 +11,11 @@ from core.interfaces import (
 )
 from config import settings
 
+                                       
 from prompt_designer.agent import PromptDesignerAgent
 from code_generator.agent import CodeGeneratorAgent
 from evaluator_agent.agent import EvaluatorAgent
-from database_agent.agent import InMemoryDatabaseAgent # Using InMemory for now
+from database_agent.agent import InMemoryDatabaseAgent                         
 from selection_controller.agent import SelectionControllerAgent
 
 logger = logging.getLogger(__name__)
@@ -21,16 +23,17 @@ logger = logging.getLogger(__name__)
 class TaskManagerAgent(TaskManagerInterface):
     def __init__(self, task_definition: TaskDefinition, config: Optional[Dict[str, Any]] = None):
         super().__init__(config)
-        self.task_definition = task_definition # Store the task definition
+        self.task_definition = task_definition                            
         self.prompt_designer: PromptDesignerInterface = PromptDesignerAgent(task_definition=self.task_definition)
         self.code_generator: CodeGeneratorInterface = CodeGeneratorAgent()
+                                                
         self.evaluator: EvaluatorAgentInterface = EvaluatorAgent(task_definition=self.task_definition)
-        self.database: DatabaseAgentInterface = InMemoryDatabaseAgent() # Can be swapped with other DB agents
+        self.database: DatabaseAgentInterface = InMemoryDatabaseAgent()                                      
         self.selection_controller: SelectionControllerInterface = SelectionControllerAgent()
 
         self.population_size = settings.POPULATION_SIZE
         self.num_generations = settings.GENERATIONS
-        self.num_parents_to_select = self.population_size // 2 # Example: select half the population size as parents
+        self.num_parents_to_select = self.population_size // 2                                                      
 
     async def initialize_population(self) -> List[Program]:
         logger.info(f"Initializing population for task: {self.task_definition.id}")
@@ -39,7 +42,7 @@ class TaskManagerAgent(TaskManagerInterface):
             program_id = f"{self.task_definition.id}_gen0_prog{i}"
             logger.debug(f"Generating initial program {i+1}/{self.population_size} with id {program_id}")
             initial_prompt = self.prompt_designer.design_initial_prompt()
-            generated_code = await self.code_generator.generate_code(initial_prompt, temperature=0.8) # Higher temp for diversity
+            generated_code = await self.code_generator.generate_code(initial_prompt, temperature=0.8)                            
             
             program = Program(
                 id=program_id,
@@ -48,7 +51,7 @@ class TaskManagerAgent(TaskManagerInterface):
                 status="unevaluated"
             )
             initial_population.append(program)
-            await self.database.save_program(program) # Save to DB
+            await self.database.save_program(program)             
         logger.info(f"Initialized population with {len(initial_population)} programs.")
         return initial_population
 
@@ -60,15 +63,15 @@ class TaskManagerAgent(TaskManagerInterface):
         results = await asyncio.gather(*evaluation_tasks, return_exceptions=True)
         
         for i, result in enumerate(results):
-            original_program = population[i] # Assumes order is maintained
+            original_program = population[i]                              
             if isinstance(result, Exception):
                 logger.error(f"Error evaluating program {original_program.id}: {result}", exc_info=result)
                 original_program.status = "failed_evaluation"
                 original_program.errors.append(str(result))
                 evaluated_programs.append(original_program)
             else:
-                evaluated_programs.append(result) # result is the evaluated Program object
-            await self.database.save_program(evaluated_programs[-1]) # Update DB with evaluation results
+                evaluated_programs.append(result)                                         
+            await self.database.save_program(evaluated_programs[-1])                                    
             
         logger.info(f"Finished evaluating population. {len(evaluated_programs)} programs processed.")
         return evaluated_programs
@@ -81,20 +84,23 @@ class TaskManagerAgent(TaskManagerInterface):
         for gen in range(1, self.num_generations + 1):
             logger.info(f"--- Generation {gen}/{self.num_generations} ---")
 
+                          
             parents = self.selection_controller.select_parents(current_population, self.num_parents_to_select)
             if not parents:
                 logger.warning(f"Generation {gen}: No parents selected. Ending evolution early.")
                 break
             logger.info(f"Generation {gen}: Selected {len(parents)} parents.")
 
+                                                                                 
+                                                
             offspring_population = []
-            num_offspring_per_parent = (self.population_size + len(parents) -1) // len(parents) # Ensure population size is met
+            num_offspring_per_parent = (self.population_size + len(parents) -1) // len(parents)                                
             
             generation_tasks = []
             for i, parent in enumerate(parents):
                 for j in range(num_offspring_per_parent):
-                    if len(offspring_population) + len(parents) >= self.population_size and j > 0 : # Rough check to avoid overshooting by too much
-                        pass # break # Avoid too many offspring if only a few parents
+                    if len(offspring_population) + len(parents) >= self.population_size and j > 0 :                                                
+                        pass                                                         
                     
                     child_id = f"{self.task_definition.id}_gen{gen}_child{len(offspring_population)}"
                     generation_tasks.append(self.generate_offspring(parent, gen, child_id))
@@ -106,15 +112,19 @@ class TaskManagerAgent(TaskManagerInterface):
                     logger.error(f"Error generating offspring: {result}", exc_info=result)
                 elif result:
                     offspring_population.append(result)
-                    await self.database.save_program(result) # Save to DB
+                    await self.database.save_program(result)             
 
             logger.info(f"Generation {gen}: Generated {len(offspring_population)} offspring.")
             if not offspring_population:
                 logger.warning(f"Generation {gen}: No offspring generated. May indicate issues with LLM or prompting.")
-                if not parents: break # no parents, no offspring, definitely stop
+                                                                             
+                if not parents: break                                            
+                                                                                                            
 
+                                        
             offspring_population = await self.evaluate_population(offspring_population)
 
+                                   
             current_population = self.selection_controller.select_survivors(current_population, offspring_population, self.population_size)
             logger.info(f"Generation {gen}: New population size: {len(current_population)}.")
 
@@ -125,6 +135,8 @@ class TaskManagerAgent(TaskManagerInterface):
                 logger.warning(f"Generation {gen}: No programs in current population after survival selection.")
                 break
 
+                                                                  
+                                                              
 
         logger.info("Evolutionary cycle completed.")
         final_best = await self.database.get_best_programs(task_id=self.task_definition.id, limit=1, objective="correctness_score")
@@ -138,8 +150,12 @@ class TaskManagerAgent(TaskManagerInterface):
         logger.debug(f"Generating offspring from parent {parent.id} for generation {generation_num}")
         
         prompt_type = "mutation"
-        if parent.errors and parent.fitness_scores.get("correctness", 1.0) < 0.1: # Correctness < 10%
+                                                                                
+                                                                                         
+        if parent.errors and parent.fitness_scores.get("correctness", 1.0) < 0.1:                    
+                                                             
             primary_error = parent.errors[0]
+                                                                                              
             execution_details = None
             if len(parent.errors) > 1 and isinstance(parent.errors[1], str) and ("stdout" in parent.errors[1].lower() or "stderr" in parent.errors[1].lower()):
                 execution_details = parent.errors[1]
@@ -152,16 +168,22 @@ class TaskManagerAgent(TaskManagerInterface):
             logger.info(f"Attempting bug fix for parent {parent.id} using diff. Error: {primary_error}")
             prompt_type = "bug_fix"
         else:
+                                                    
+                                                                        
             feedback = {
                 "errors": parent.errors,
                 "correctness_score": parent.fitness_scores.get("correctness"),
                 "runtime_ms": parent.fitness_scores.get("runtime_ms")
+                                                                         
             }
+                                                                     
             feedback = {k: v for k, v in feedback.items() if v is not None}
 
             mutation_prompt = self.prompt_designer.design_mutation_prompt(program=parent, evaluation_feedback=feedback)
             logger.info(f"Attempting mutation for parent {parent.id} using diff.")
         
+                                                                                                          
+                                                                              
         generated_code = await self.code_generator.execute(
             prompt=mutation_prompt, 
             temperature=0.75, 
@@ -173,21 +195,26 @@ class TaskManagerAgent(TaskManagerInterface):
             logger.warning(f"Offspring generation for parent {parent.id} ({prompt_type}) resulted in empty code/diff. Skipping.")
             return None
         
+                                                                                                                               
+                                                                          
         if generated_code == parent.code:
             logger.warning(f"Offspring generation for parent {parent.id} ({prompt_type}) using diff resulted in no change to the code. Skipping.")
             return None
         
+                                                                                                          
+                                                                       
         if "<<<<<<< SEARCH" in generated_code and "=======" in generated_code and ">>>>>>> REPLACE" in generated_code:
-            logger.warning(f"Offspring generation for parent {parent.id} ({prompt_type}) seems to have returned raw diff. LLM or diff application may have failed. Skipping. Content:\n{generated_code[:500]}") # Log first 500 chars
+            logger.warning(f"Offspring generation for parent {parent.id} ({prompt_type}) seems to have returned raw diff. LLM or diff application may have failed. Skipping. Content:\n{generated_code[:500]}")                      
             return None
         
-        if "# Error:" in generated_code[:100]: # Check beginning of the code for common error markers
+                                                                                   
+        if "# Error:" in generated_code[:100]:                                                       
             logger.warning(f"Failed to generate valid code for offspring of {parent.id} ({prompt_type}). LLM Output indicates error: {generated_code[:200]}")
             return None
 
         offspring = Program(
             id=child_id,
-            code=generated_code, # This is now the modified code after diff application
+            code=generated_code,                                                       
             generation=generation_num,
             parent_id=parent.id,
             status="unevaluated"
@@ -198,11 +225,16 @@ class TaskManagerAgent(TaskManagerInterface):
     async def execute(self) -> Any:
         return await self.manage_evolutionary_cycle()
 
+                                                  
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+                                                          
+                                                                                        
+                                                                                         
 
-    task_manager = TaskManagerAgent(task_definition=sample_task) # Pass sample_task here
+    task_manager = TaskManagerAgent(task_definition=sample_task)                        
 
+                          
     sample_task = TaskDefinition(
         id="sum_list_task_001",
         description="Write a Python function called `solve(numbers)` that takes a list of integers `numbers` and returns their sum. The function should handle empty lists correctly by returning 0.",
@@ -216,13 +248,15 @@ if __name__ == '__main__':
         initial_code_prompt = "Please provide a Python function `solve(numbers)` that sums a list of integers. Handle empty lists by returning 0."
     )
     
-    task_manager.num_generations = 3 # settings.GENERATIONS = 3
-    task_manager.population_size = 5 # settings.POPULATION_SIZE = 5
-    task_manager.num_parents_to_select = 2 # settings.POPULATION_SIZE // 2 
+                                                    
+    task_manager.num_generations = 3                           
+    task_manager.population_size = 5                               
+    task_manager.num_parents_to_select = 2                                 
 
     async def run_task():
+                                                                   
         try:
-            best_programs = await task_manager.manage_evolutionary_cycle() # Removed sample_task argument
+            best_programs = await task_manager.manage_evolutionary_cycle()                               
             if best_programs:
                 print(f"\n*** Evolution Complete! Best program found: ***")
                 print(f"ID: {best_programs[0].id}")

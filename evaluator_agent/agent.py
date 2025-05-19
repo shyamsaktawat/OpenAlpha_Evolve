@@ -1,3 +1,4 @@
+                  
 import time
 import logging
 import traceback
@@ -60,9 +61,11 @@ class EvaluatorAgent(EvaluatorAgentInterface, BaseAgent):
                 return f"float('{str(arg)}')"
             return json.dumps(arg)
 
+                                                                                          
         test_cases_str = json.dumps(task_for_examples.input_output_examples)
         test_cases_str = test_cases_str.replace('"Infinity"', 'float("inf")')
         test_cases_str = test_cases_str.replace('"NaN"', 'float("nan")')
+                                                                      
         test_cases_str = test_cases_str.replace('true', 'True').replace('false', 'False').replace('null', 'None')
 
         test_harness_code = f"""
@@ -71,19 +74,25 @@ import time
 import sys
 import math  # Import math for inf/nan constants
 
+# User's code (function to be tested)
 {code}
 
+# Test execution logic
 results = []
 total_execution_time = 0
 num_tests = 0
 
+# Special constants for test cases
 Infinity = float('inf')
 NaN = float('nan')
 
 test_cases = {test_cases_str} 
 function_to_test_name = "{task_for_examples.function_name_to_evolve}"
 
+# Make sure the function_to_test is available in the global scope
 if function_to_test_name not in globals():
+    # Attempt to find it if it was defined inside a class (common for LLM output)
+    # This is a simple heuristic and might need refinement.
     found_func = None
     for name, obj in list(globals().items()):
         if isinstance(obj, type):
@@ -92,7 +101,7 @@ if function_to_test_name not in globals():
                 if callable(method):
                     globals()[function_to_test_name] = method
                     found_func = True
-                    break
+                                break
     if not found_func:
         print(json.dumps({{"error": f"Function '{{function_to_test_name}}' not found in the global scope or as a callable method of a defined class."}}))
         sys.exit(1)
@@ -119,8 +128,8 @@ for i, test_case in enumerate(test_cases):
         num_tests += 1
         results.append({{"test_case_id": i, "output": actual_output, "runtime_ms": execution_time_ms, "status": "success"}})
     except Exception as e:
-        end_time = time.perf_counter()
-        execution_time_ms = (end_time - start_time) * 1000
+            end_time = time.perf_counter()
+            execution_time_ms = (end_time - start_time) * 1000
         error_output = {{
             "test_case_id": i,
             "error": str(e), 
@@ -282,8 +291,8 @@ print(json.dumps(final_output, default=custom_json_serializer))
                 logger.warning(f"Execution error for program {program.id}: {execution_error}")
                 program.errors.append(f"Execution Error: {execution_error}")
                 program.fitness_scores["correctness"] = 0.0
-                program.status = "failed_evaluation"
-                return program
+            program.status = "failed_evaluation"
+            return program
 
             logger.debug(f"Execution results for program {program.id}: {execution_results}")
             
@@ -304,7 +313,7 @@ print(json.dumps(final_output, default=custom_json_serializer))
             program.status = "evaluated"
         else:
             program.status = "failed_evaluation"
-            
+        
         logger.info(f"Evaluation complete for program {program.id}. Status: {program.status}, Fitness: {program.fitness_scores}")
         return program
 
@@ -313,5 +322,12 @@ print(json.dumps(final_output, default=custom_json_serializer))
 
     def _compare_outputs(self, actual: Any, expected: Any) -> bool:
         logger.debug(f"Comparing outputs. Actual: {actual}, Expected: {expected}")
+                                                                    
         return actual == expected
 
+                                                 
+                                                              
+                                                                                              
+                                                         
+                                                        
+                                                                    
