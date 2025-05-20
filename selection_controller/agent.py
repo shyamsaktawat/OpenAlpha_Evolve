@@ -1,7 +1,6 @@
 import random
 import logging
-from typing import List, Dict, Any, Optional, Tuple
-from collections import defaultdict
+from typing import List, Dict, Any, Optional
 
 from core.interfaces import SelectionControllerInterface, Program, BaseAgent
 from config import settings
