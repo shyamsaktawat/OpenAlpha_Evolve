@@ -80,7 +80,10 @@ async def run_evolution(
     examples_json, 
     allowed_imports_text,
     population_size, 
-    generations
+    generations,
+    num_islands,
+    migration_frequency,
+    migration_rate
 ):
     """Run the evolutionary process with the given parameters."""
     progress = gr.Progress()
@@ -107,6 +110,9 @@ async def run_evolution(
                                  
         settings.POPULATION_SIZE = int(population_size)
         settings.GENERATIONS = int(generations)
+        settings.NUM_ISLANDS = int(num_islands)
+        settings.MIGRATION_FREQUENCY = int(migration_frequency)
+        settings.MIGRATION_RATE = float(migration_rate)
         
                                   
         task = TaskDefinition(
@@ -223,7 +229,8 @@ async def run_evolution(
                     result_text += f"### Solution {i+1}\n"
                     result_text += f"- ID: {program.id}\n"
                     result_text += f"- Fitness: {program.fitness_scores}\n"
-                    result_text += f"- Generation: {program.generation}\n\n"
+                    result_text += f"- Generation: {program.generation}\n"
+                    result_text += f"- Island ID: {program.island_id}\n\n"
                     result_text += "```python\n" + program.code + "\n```\n\n"
                 return result_text
             else:
@@ -271,6 +278,7 @@ with gr.Blocks(title="OpenAlpha_Evolve") as demo:
     * **Custom Tasks:** Write your own problem definition, examples, and allowed imports in the fields below.
     * **Multi-Model Support:** Additional language model backends coming soon.
     * **Evolutionary Budget:** For novel, complex solutions consider using large budgets (e.g., 100+ generations and population sizes of hundreds or thousands).
+    * **Island Model:** The population is divided into islands that evolve independently, with periodic migration between them.
     """)
     
     with gr.Row():
@@ -327,6 +335,31 @@ with gr.Blocks(title="OpenAlpha_Evolve") as demo:
                 )
             
             with gr.Row():
+                num_islands = gr.Slider(
+                    label="Number of Islands",
+                    minimum=1,
+                    maximum=5,
+                    value=3,
+                    step=1
+                )
+                
+                migration_frequency = gr.Slider(
+                    label="Migration Frequency (generations)",
+                    minimum=1,
+                    maximum=5,
+                    value=2,
+                    step=1
+                )
+                
+                migration_rate = gr.Slider(
+                    label="Migration Rate",
+                    minimum=0.1,
+                    maximum=0.5,
+                    value=0.2,
+                    step=0.1
+                )
+            
+            with gr.Row():
                 example_btn = gr.Button("📘 Fibonacci Example")
             
             run_btn = gr.Button("🚀 Run Evolution", variant="primary")
@@ -352,7 +385,10 @@ with gr.Blocks(title="OpenAlpha_Evolve") as demo:
             examples_json,
             allowed_imports,
             population_size, 
-            generations
+            generations,
+            num_islands,
+            migration_frequency,
+            migration_rate
         ],
         outputs=results_text
     )
