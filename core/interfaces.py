@@ -1,7 +1,7 @@
-                                           
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, Union
 from dataclasses import dataclass, field
+import time
 
 @dataclass
 class Program:
@@ -10,8 +10,10 @@ class Program:
     fitness_scores: Dict[str, float] = field(default_factory=dict)                                                 
     generation: int = 0
     parent_id: Optional[str] = None
+    island_id: Optional[int] = None
     errors: List[str] = field(default_factory=list)
-    status: str = "unevaluated"                                                              
+    status: str = "unevaluated"
+    created_at: float = field(default_factory=lambda: time.time())  # Track program age
 
 @dataclass
 class TaskDefinition:

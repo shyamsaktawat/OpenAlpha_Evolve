@@ -33,13 +33,25 @@ ELITISM_COUNT = 1
 MUTATION_RATE = 0.7
 CROSSOVER_RATE = 0.2
 
+# Island Model Settings
+NUM_ISLANDS = 4  # Number of subpopulations
+MIGRATION_INTERVAL = 4  # Number of generations between migrations
+ISLAND_POPULATION_SIZE = POPULATION_SIZE // NUM_ISLANDS  # Programs per island
+MIN_ISLAND_SIZE = 2  # Minimum number of programs per island
+MIGRATION_RATE = 0.2  # Rate at which programs migrate between islands
+
+# Debug Settings
+DEBUG = os.getenv("DEBUG", False)
 EVALUATION_TIMEOUT_SECONDS = 800
 
 DATABASE_TYPE = "in_memory"
 DATABASE_PATH = "program_database.json"
 
-LOG_LEVEL = "INFO"
+# Logging Configuration
+LOG_LEVEL = "DEBUG" if DEBUG else "INFO"
 LOG_FILE = "alpha_evolve.log"
+LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 API_MAX_RETRIES = 5
 API_RETRY_DELAY_SECONDS = 10

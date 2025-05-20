@@ -22,7 +22,7 @@ class InMemoryDatabaseAgent(DatabaseAgentInterface, BaseAgent):
     async def save_program(self, program: Program) -> None:
         logger.info(f"Saving program: {program.id} (Generation: {program.generation}) to in-memory database.")
         if program.id in self._programs:
-            logger.warning(f"Program with ID {program.id} already exists. It will be overwritten.")
+            logger.warning(f"Program with ID {program.id} already exists (expected during evolution/migration). It will be overwritten.")
         self._programs[program.id] = program
         logger.debug(f"Program {program.id} data: {program}")
 
@@ -62,11 +62,6 @@ class InMemoryDatabaseAgent(DatabaseAgentInterface, BaseAgent):
                 return p.fitness_scores.get("correctness", -1.0)
             elif objective == "runtime_ms":
                 val = p.fitness_scores.get("runtime_ms", float('inf'))
-                                                                                                        
-                                                                                       
-                                                                                                            
-                                                    
-                                                                                        
                 return -val if sort_order == "desc" else val 
             return 0                                       
 
