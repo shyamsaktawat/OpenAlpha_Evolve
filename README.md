@@ -2,7 +2,7 @@
 
 ![openalpha_evolve_workflow](https://github.com/user-attachments/assets/9d4709ad-0072-44ae-bbb5-7eea1c5fa08c)
 
-OpenAlpha_Evolve is an open-source Python framework inspired by the groundbreaking research on autonomous coding agents like DeepMind's AlphaEvolve. It's a **regeneration** of the core idea: an intelligent system that iteratively writes, tests, and improves code using Large Language Models (LLMs) like Google's Gemini, guided by the principles of evolution.
+OpenAlpha_Evolve is an open-source Python framework inspired by the groundbreaking research on autonomous coding agents like DeepMind's AlphaEvolve. It's a **regeneration** of the core idea: an intelligent system that iteratively writes, tests, and improves code using Large Language Models (LLMs) through LiteLLM, guided by the principles of evolution.
 
 Our mission is to provide an accessible, understandable, and extensible platform for researchers, developers, and enthusiasts to explore the fascinating intersection of AI, code generation, and automated problem-solving.
 
@@ -53,7 +53,7 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
 
 ## 🚀 Key Features
 
-*   **LLM-Powered Code Generation**: Leverages state-of-the-art Large Language Models (Google Gemini integration included).
+*   **LLM-Powered Code Generation**: Leverages state-of-the-art Large Language Models through LiteLLM, supporting multiple providers (OpenAI, Anthropic, Google, etc.).
 *   **Evolutionary Algorithm Core**: Implements iterative improvement through selection, LLM-driven mutation/bug-fixing (via diffs), and survival.
 *   **Modular Agent Architecture**: Easily extend or replace individual components (e.g., use a different LLM, database, or evaluation strategy).
 *   **Automated Program Evaluation**: Syntax checking and functional testing against user-provided examples with timeout mechanisms.
@@ -116,23 +116,34 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
     pip install -r requirements.txt
     ```
 
-5.  **Set Up Environment Variables (Crucial for API Key)**:
+5.  **Set Up Environment Variables (Crucial for API Keys)**:
     *   Copy `.env.example` to a new file named `.env` in the project root:
         ```bash
         cp .env.example .env
         ```
-    *   **Edit the `.env` file** and add your `GEMINI_API_KEY`:
+    *   **Edit the `.env` file** and add your API keys and model configurations, more settings can be found in .env.example:
         ```env
-        GEMINI_API_KEY="YOUR_ACTUAL_GEMINI_API_KEY_HERE"
+        # LLM Configuration
+        PRO_API_KEY="your_api_key_here"
+        PRO_MODEL="your_model_name"
+
+        FLASH_API_KEY="your_api_key_here"
+        FLASH_MODEL="your_model_name"
+
+        EVALUATION_API_KEY="your_api_key_here"
+        EVALUATION_MODEL="your_model_name"
         ```
-        *You can obtain your API key from [Google AI Studio](https://aistudio.google.com/app/apikey).*
-    *   The system will prioritize the key from the `.env` file. If it's not found, it will use a non-functional placeholder from `config/settings.py` and print a warning. **Ensure your `.env` file is correctly set up.**
+        *You can obtain API keys from your preferred LLM provider (OpenAI, Anthropic, Google, etc.).*
+    *   The system will prioritize the keys from the `.env` file. If they're not found, it will use non-functional placeholders from `config/settings.py` and print a warning. **Ensure your `.env` file is correctly set up.**
+    *   For detailed information about supported LLM providers and their configuration options, visit the [LiteLLM Documentation](https://docs.litellm.ai/docs/providers/).
 
 6.  **Review Configuration (Optional)**:
     *   Open `config/settings.py`. Here you can:
-        *   Change the default LLM models used for generation (`GEMINI_PRO_MODEL_NAME`) and evaluation (`GEMINI_EVALUATION_MODEL`).
-        *   Adjust evolutionary parameters like `POPULATION_SIZE` and `GENERATIONS`.
-        *   Modify API retry settings or logging levels.
+        *   Change the default LLM models used for generation (`PRO_MODEL`) and evaluation (`EVALUATION_MODEL`).
+        *   Adjust LiteLLM parameters like `LITELLM_MAX_TOKENS`, `LITELLM_TEMPERATURE`, etc.
+        *   Set optional base URLs for each model (`PRO_BASE_URL`, `FLASH_BASE_URL`, `EVALUATION_BASE_URL`).
+        *   Modify evolutionary parameters like `POPULATION_SIZE` and `GENERATIONS`.
+        *   Adjust API retry settings or logging levels.
 
 7.  **Run OpenAlpha_Evolve!**
     The `main.py` file is configured with an example task (Dijkstra's algorithm). To run it:
@@ -180,7 +191,7 @@ OpenAlpha_Evolve is a living project. Here are some directions we're excited to 
 *   **Sophisticated Fitness Metrics**: Beyond correctness and basic runtime, incorporating checks for code complexity (e.g., cyclomatic complexity), style (linting), resource usage (memory), and custom domain-specific metrics.
 *   **Reinforcement Learning for Prompt Strategy**: Implementing the `RLFineTunerAgent` to dynamically optimize prompt engineering strategies based on performance feedback.
 *   **Enhanced Monitoring & Visualization**: Developing tools (via `MonitoringAgent`) to visualize the evolutionary process, track fitness landscapes, and understand agent behavior (e.g., using a simple web dashboard or plots).
-*   **Broader LLM Support**: Adding easy integrations for other powerful LLMs (e.g., OpenAI models, Anthropic Claude).
+*   **Expanded LLM Provider Support**: Adding support for more LLM providers through LiteLLM's growing ecosystem.
 *   **Self-Correction & Reflection**: Enabling the agent to analyze its own failures more deeply (e.g., analyze error messages, identify patterns in failed tests) and refine its problem-solving approach.
 *   **Diverse Task Domains**: Applying OpenAlpha_Evolve to a wider range of problems in science, engineering, data analysis, and creative coding.
 *   **Community-Driven Task Library**: Building a collection of interesting and challenging tasks contributed by the community.

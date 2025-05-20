@@ -1,5 +1,5 @@
 # Core Libraries
-google-generativeai>=0.3.0
+litellm
 python-dotenv>=1.0.0
 
 # LLM Models & Frameworks
