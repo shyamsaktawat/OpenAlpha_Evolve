@@ -9,6 +9,7 @@ import ast
 import json
 import asyncio
 import sys
+import math
 from typing import Optional, Dict, Any, Tuple, Union, List
 
 from core.interfaces import EvaluatorAgentInterface, Program, TaskDefinition, BaseAgent
@@ -252,7 +253,7 @@ print(json.dumps(final_output, default=custom_json_serializer))
                 actual = actual_output_detail.get("output")
                 expected_val = expected["output"]
                 
-                if actual == expected_val:
+                if self._compare_outputs(actual, expected_val):
                     passed_tests += 1
                 else:
                     logger.debug(f"Test case {i} failed: Expected '{expected_val}', Got '{actual}'")
@@ -321,9 +322,19 @@ print(json.dumps(final_output, default=custom_json_serializer))
         return await self.evaluate_program(program, task)
 
     def _compare_outputs(self, actual: Any, expected: Any) -> bool:
-        logger.debug(f"Comparing outputs. Actual: {actual}, Expected: {expected}")
-                                                                    
-        return actual == expected
+        logger.debug(f"Comparing outputs. Actual: {type(actual)}{actual}, Expected: {type(expected)}{expected}")
+        
+        if isinstance(actual, float) and isinstance(expected, float):
+            TOLERANCE = 1e-9 # This could also be made configurable via settings.py later.
+            is_close = math.isclose(actual, expected, rel_tol=TOLERANCE, abs_tol=TOLERANCE)
+            if not is_close:
+                logger.debug(f"Float comparison: {actual} vs {expected} is NOT close (tolerance: {TOLERANCE}).")
+            return is_close
+        
+        # Fallback to direct equality for other types
+        are_equal = actual == expected
+
+        return are_equal
 
                                                  
                                                               
