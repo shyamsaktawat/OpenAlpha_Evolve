@@ -102,7 +102,7 @@ if function_to_test_name not in globals():
                 if callable(method):
                     globals()[function_to_test_name] = method
                     found_func = True
-                                break
+                    break
     if not found_func:
         print(json.dumps({{"error": f"Function '{{function_to_test_name}}' not found in the global scope or as a callable method of a defined class."}}))
         sys.exit(1)
@@ -129,8 +129,8 @@ for i, test_case in enumerate(test_cases):
         num_tests += 1
         results.append({{"test_case_id": i, "output": actual_output, "runtime_ms": execution_time_ms, "status": "success"}})
     except Exception as e:
-            end_time = time.perf_counter()
-            execution_time_ms = (end_time - start_time) * 1000
+        end_time = time.perf_counter()
+        execution_time_ms = (end_time - start_time) * 1000
         error_output = {{
             "test_case_id": i,
             "error": str(e), 
@@ -292,8 +292,7 @@ print(json.dumps(final_output, default=custom_json_serializer))
                 logger.warning(f"Execution error for program {program.id}: {execution_error}")
                 program.errors.append(f"Execution Error: {execution_error}")
                 program.fitness_scores["correctness"] = 0.0
-            program.status = "failed_evaluation"
-            return program
+            program.status = "failed_evaluation"            
 
             logger.debug(f"Execution results for program {program.id}: {execution_results}")
             
@@ -304,7 +303,9 @@ print(json.dumps(final_output, default=custom_json_serializer))
             logger.info(f"Program {program.id} correctness: {correctness} ({passed_tests}/{total_tests} tests passed)")
 
             if correctness < 1.0:
-                 program.errors.append(f"Failed {total_tests - passed_tests} out of {total_tests} test cases.")
+                program.errors.append(f"Failed {total_tests - passed_tests} out of {total_tests} test cases.")
+                 
+            return program
         else:
             logger.info(f"No input/output examples provided for task {task.id}. Skipping execution-based correctness check for program {program.id}.")
             program.fitness_scores["correctness"] = 0.5
