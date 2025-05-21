@@ -68,8 +68,8 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
 *   **LLM-Powered Code Generation**: Leverages state-of-the-art Large Language Models via LiteLLM, supporting multiple providers (OpenAI, Anthropic, Google, etc.).
 *   **Evolutionary Algorithm Core**: Implements iterative improvement through selection, LLM-driven mutation/bug-fixing using diffs, and survival.
 *   **Modular Agent Architecture**: Easily extend or replace individual components (e.g., use a different LLM, database, or evaluation strategy).
-*   **Automated Program Evaluation**: Syntax checking and functional testing against user-provided examples with timeout mechanisms.
-*   **Configuration Management**: Easily tweak parameters like population size, number of generations, LLM models, and API settings via `config/settings.py`.
+*   **Automated Program Evaluation**: Syntax checking and functional testing against user-provided examples. Code execution is sandboxed using **Docker containers** for improved security and dependency management, with configurable timeout mechanisms.
+*   **Configuration Management**: Easily tweak parameters like population size, number of generations, LLM models, API settings, and Docker configurations via `config/settings.py` and `.env`.
 *   **Detailed Logging**: Comprehensive logs provide insights into each step of the evolutionary process.
 *   **Diff-based Mutations**: The system is designed to use diffs for mutations and bug fixes, allowing for more targeted code modifications by the LLM.
 *   **Open Source & Extensible**: Built with Python, designed for experimentation and community contributions.
@@ -110,6 +110,7 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
     *   Python 3.10+
     *   `pip` for package management
     *   `git` for cloning
+    *   **Docker**: For sandboxed code evaluation. Ensure Docker Desktop (Windows/Mac) or Docker Engine (Linux) is installed and running. Visit [docker.com](https://www.docker.com/get-started) for installation instructions.
 
 2.  **Clone the Repository**:
     ```bash
@@ -139,15 +140,8 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
 ### LLM Configuration
 
 
-6.  **Review Configuration (Optional)**:
-    *   Open `config/settings.py`. While most LLM settings are now primarily managed via `.env` and LiteLLM, you can still review:
-        *   Default model fallbacks if environment variables are not set (e.g., `LITELLM_DEFAULT_MODEL` has a fallback in `settings.py`).
-        *   The specific model names used for evaluation (`EVALUATION_MODEL`) and fast operations (`FLASH_MODEL`) if not overridden in `.env`.
-        *   Default LiteLLM parameters like `LITELLM_MAX_TOKENS`, `LITELLM_TEMPERATURE`, etc., which serve as defaults if not set in `.env`.
-        *   Evolutionary parameters like `POPULATION_SIZE` and `GENERATIONS`.
-        *   API retry settings or logging levels.
 
-7.  **Run OpenAlpha_Evolve!**
+8.  **Run OpenAlpha_Evolve!**
     The `main.py` file is configured with an example task (Dijkstra's algorithm). To run it:
     ```bash
     python -m main
@@ -231,22 +225,7 @@ Crafting effective task definitions is key to guiding OpenAlpha_Evolve successfu
 
 ## 🔮 The Horizon: Future Evolution
 
-OpenAlpha_Evolve is a living project, and its future is shaped by community collaboration! Here are some directions we're excited to explore, with many opportunities for you to contribute:
 
-*   **Advanced Evaluation Sandboxing**: Implementing more robust and secure sandboxing for code execution. This could involve using technologies like Docker containers, gVisor, or `nsjail` to better isolate code and manage complex dependencies, especially for tasks requiring external libraries. (Contribution Idea: Help integrate and test a new sandboxing technology!)
-*   **Sophisticated Fitness Metrics**: Expanding beyond correctness and basic runtime. We aim to incorporate checks for code complexity (e.g., cyclomatic complexity using tools like `radon`), adherence to coding styles (e.g., via linters like Flake8 or Pylint), resource usage (memory profiling), and the ability to define custom domain-specific metrics for specialized tasks. (Contribution Idea: Propose and implement a new fitness metric or integrate a code analysis tool!)
-*   **Reinforcement Learning for Prompt Strategy**: Activating and enhancing the `RLFineTunerAgent` to dynamically optimize prompt engineering strategies. This involves training a model that learns which prompt modifications lead to better code generation outcomes over time, potentially using feedback from fitness scores. (Contribution Idea: Design or implement RL algorithms for prompt optimization within the agent!)
-*   **Enhanced Monitoring & Visualization**: Developing more comprehensive tools via the `MonitoringAgent` to visualize the evolutionary process. This could include interactive dashboards (perhaps using Streamlit or Plotly Dash) to track fitness landscapes, diversity of solutions, agent decision-making, and the lineage of successful programs. (Contribution Idea: Create new visualizations or integrate a dashboarding framework!)
-*   **Expanded LLM Provider Support**: Continuously adding support for more LLM providers and models through LiteLLM's growing ecosystem. This ensures users have access to the latest and most suitable models for their tasks. (Contribution Idea: Add configuration and testing for a new LLM provider or a cutting-edge model!)
-*   **Self-Correction & Reflection**: Enabling the agent to learn from its mistakes more deeply. This could involve mechanisms for analyzing execution errors, identifying patterns in failed test cases, or even prompting an LLM to reflect on why a particular solution was suboptimal and suggest improvements to its own problem-solving approach. (Contribution Idea: Develop new heuristics or LLM prompts for automated error analysis and reflection!)
-*   **Diverse Task Domains**: Applying OpenAlpha_Evolve to a wider range of algorithmic problems. This includes exploring tasks in areas like scientific computing (e.g., physics simulations, bioinformatics), engineering design, financial modeling, data analysis pipelines, and even creative coding challenges. (Contribution Idea: Define a novel task in a new domain and share your results!)
-*   **Community-Driven Task Library**: Building a rich, well-documented collection of interesting and challenging tasks contributed by the community. This library would serve as a benchmark and a source of inspiration for users. (Contribution Idea: Submit a well-defined task with examples to our upcoming task repository!)
-*   **Improved Diff Application**: Making the diff application logic more robust and intelligent. This could involve better parsing of LLM-generated diffs, handling conflicts more gracefully, or exploring alternative structured formats for the LLM to suggest code modifications. (Contribution Idea: Research and implement more advanced diff parsing and application techniques!)
-*   **Crossover Implementation**: Adding a classic genetic algorithm "crossover" (or recombination) mechanism. This would allow the system to combine parts of two successful parent programs to create offspring, offering an alternative or supplement to LLM-driven mutation for exploring the solution space. (Contribution Idea: Implement a crossover strategy suitable for code structures!)
-*   **Multi-Objective Optimization**: Evolving solutions that balance multiple, potentially competing, fitness criteria. For instance, finding code that is not only correct but also fast, memory-efficient, and perhaps even easy to read. This would involve changes to the selection and fitness evaluation mechanisms. (Contribution Idea: Adapt the selection process to handle Pareto fronts or weighted-sum fitness for multiple objectives!)
-*   **Integration with Formal Verification Tools**: For applications where correctness is absolutely critical (e.g., security-sensitive code, core infrastructure algorithms), exploring how generated code could be automatically fed into formal verification systems like TLA+, Coq, or Z3. This could provide stronger guarantees about the code's properties. (Contribution Idea: Investigate and prototype an interface to a formal verification tool for suitable tasks!)
-
-We believe in the power of open source and community effort. If any of these areas spark your interest, please check out our contribution guidelines, open an issue to discuss your ideas, or submit a pull request!
 
 ---
 
