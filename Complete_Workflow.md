@@ -1,5 +1,7 @@
 # OpenAlpha_Evolve: Project Workflow and Code Explanation
 
+**Important Note on Current Implementation:** The current primary implementation in the `main` branch utilizes an **Island Model** for evolution, primarily using the `InMemoryDatabaseAgent` by default for storing programs. While this document describes features like **MAP-Elites** and the `SQLiteDatabaseAgent` for persistent, archive-based evolution, the `SQLiteDatabaseAgent` is currently in a basic state and its MAP-Elites functionality is not yet fully implemented. The sections detailing MAP-Elites should be considered as describing a planned or partially developed feature.
+
 This document provides a detailed explanation of the OpenAlpha_Evolve project, its workflow, the role of each component (agent and module), and how they interact to achieve autonomous algorithmic discovery.
 
 ## 1. Core Philosophy and Goal
@@ -28,14 +30,14 @@ The project is structured into several core components, primarily agents and con
         *   `Program`: Represents a candidate algorithmic solution, including its code, fitness scores, generation, parent ID, errors, status, and behavioral descriptors.
         *   `TaskDefinition`: Encapsulates the problem to be solved, including its description, I/O examples, function name, evaluation criteria, and allowed imports.
 *   **Agents (each in its own subdirectory)**:
-    *   `task_manager/agent.py` (`TaskManagerAgent`): Orchestrates the entire evolutionary process.
+    *   `task_manager/agent.py` (`TaskManagerAgent`): Orchestrates the entire evolutionary process, typically an island model.
     *   `prompt_designer/agent.py` (`PromptDesignerAgent`): Crafts prompts for the LLM for initial code generation, mutation, and bug-fixing.
     *   `code_generator/agent.py` (`CodeGeneratorAgent`): Interacts with the LLM (e.g., Gemini API) to generate code or diffs, and applies these diffs.
     *   `evaluator_agent/agent.py` (`EvaluatorAgent`): Evaluates generated programs for syntax correctness and functional correctness against test cases in a sandboxed environment. Computes fitness scores and behavioral descriptors.
     *   `database_agent/`
-        *   `agent.py` (`InMemoryDatabaseAgent`): An in-memory database for storing programs (simpler, non-persistent).
-        *   `sqlite_agent.py` (`SQLiteDatabaseAgent`): A persistent database using SQLite, implementing the MAP-Elites archive.
-    *   `selection_controller/agent.py` (`SelectionControllerAgent`): Implements strategies for selecting parent programs for reproduction and (previously) survivor programs. Now primarily focused on parent selection from the MAP-Elites archive.
+        *   `agent.py` (`InMemoryDatabaseAgent`): An in-memory database for storing programs (simpler, non-persistent), commonly used with the island model.
+        *   `sqlite_agent.py` (`SQLiteDatabaseAgent`): A persistent database using SQLite. Intended for MAP-Elites archive, but this functionality is currently basic and under development.
+    *   `selection_controller/agent.py` (`SelectionControllerAgent`): Implements the Island Model, managing sub-populations (islands), parent selection within islands, offspring distribution, and migration.
     *   `monitoring_agent/agent.py` (`MonitoringAgent`): Logs progress, archive status, and other metrics. (Future: visualization).
     *   `rl_finetuner/agent.py` (`RLFineTunerAgent`): Placeholder for future reinforcement learning-based optimization of prompts or LLM parameters.
 *   **Logging**:
@@ -43,7 +45,7 @@ The project is structured into several core components, primarily agents and con
 
 ## 3. Overall Workflow
 
-The system operates in an evolutionary loop, managed by the `TaskManagerAgent`. Here's a high-level overview of the workflow, particularly when using the MAP-Elites approach with the `SQLiteDatabaseAgent`:
+The system operates in an evolutionary loop, managed by the `TaskManagerAgent`. The default workflow uses an Island Model. The description below also includes details of a MAP-Elites approach, which is a planned or partially developed feature.
 
 **Phase 0: Setup and Task Definition**
 
@@ -66,8 +68,8 @@ The system operates in an evolutionary loop, managed by the `TaskManagerAgent`. 
         *   `PromptDesignerAgent`: For creating prompts.
         *   `CodeGeneratorAgent`: For LLM interactions.
         *   `EvaluatorAgent`: For evaluating programs.
-        *   `DatabaseAgent` (either `InMemoryDatabaseAgent` or `SQLiteDatabaseAgent` based on `settings.DATABASE_TYPE`).
-        *   `SelectionControllerAgent`: For selecting parents.
+        *   `DatabaseAgent` (either `InMemoryDatabaseAgent` or `SQLiteDatabaseAgent` based on `settings.DATABASE_TYPE`, though the latter's MAP-Elites features are under development and the system defaults to an island model which primarily uses `InMemoryDatabaseAgent` or a basic version of `SQLiteDatabaseAgent`).
+        *   `SelectionControllerAgent`: Manages the island model, including parent selection, offspring placement, and migration.
         *   `MonitoringAgent`: For logging and reporting.
 2.  **Initial Population Generation**:
     *   A loop runs for `settings.POPULATION_SIZE` iterations.
@@ -92,8 +94,8 @@ The system operates in an evolutionary loop, managed by the `TaskManagerAgent`. 
     *   **Saving Evaluated Programs (`DatabaseAgent.save_program`)**: The updated `Program` objects (with fitness scores, status, errors, BDs) are saved to the database.
 4.  **Offering to MAP-Elites Archive (`TaskManagerAgent.initialize_population` calls `DatabaseAgent.offer_to_archive`)**:
     *   For each successfully evaluated initial program:
-        *   **Scalar Fitness Calculation (`TaskManagerAgent._calculate_scalar_fitness`)**: Calculates a single scalar fitness score from `program.fitness_scores` using `settings.FITNESS_WEIGHT_CORRECTNESS` and `settings.FITNESS_WEIGHT_RUNTIME`.
-        *   **Offer to Archive (`SQLiteDatabaseAgent.offer_to_archive`)**:
+        *   **(MAP-Elites Specific) Scalar Fitness Calculation (`TaskManagerAgent._calculate_scalar_fitness`)**: Calculates a single scalar fitness score from `program.fitness_scores` using `settings.FITNESS_WEIGHT_CORRECTNESS` and `settings.FITNESS_WEIGHT_RUNTIME`.
+        *   **(MAP-Elites Specific) Offer to Archive (`SQLiteDatabaseAgent.offer_to_archive`)**:
             *   The program, its scalar fitness, and task ID are offered to the MAP-Elites archive.
             *   The `cell_id` is constructed from the program's `behavioral_descriptors` and `task_id`.
             *   The method checks if the program is better than the current elite in that cell.
@@ -101,23 +103,22 @@ The system operates in an evolutionary loop, managed by the `TaskManagerAgent`. 
                 1.  Removes the program from any *other* cell it might have occupied for this task (to handle "movement" between cells and maintain `UNIQUE(task_id, elite_program_id)` constraint).
                 2.  Inserts or replaces the program as the elite in the target cell, updating `scalar_fitness` and `last_updated` timestamp.
             *   Returns `True` if the program became an elite, `False` otherwise.
-5.  **Archive Status Report (`TaskManagerAgent` calls `MonitoringAgent.report_archive_status`)**:
+            *   (Note: This MAP-Elites functionality is currently a basic scaffold in `SQLiteDatabaseAgent`.)
+5.  **Island Initialization (`SelectionControllerAgent.execute("initialize_islands", ...)` called by `TaskManagerAgent`)**:
+    *   The evaluated initial population is distributed among a set number of islands, managed by the `SelectionControllerAgent`.
+6.  **Archive Status Report (If MAP-Elites is Active) (`TaskManagerAgent` calls `MonitoringAgent.report_archive_status`)**:
     *   The `TaskManagerAgent` calls `_get_archive_summary_for_monitoring` (which fetches elites and formats them) and then calls `MonitoringAgent.report_archive_status` to log the current state of the MAP-Elites archive.
 
 **Phase 2: Evolutionary Cycle (`TaskManagerAgent.manage_evolutionary_cycle`)**
 
 This loop runs for `settings.GENERATIONS`:
 
-1.  **Retrieve Elites (`DatabaseAgent.get_elites_by_task`)**:
-    *   Fetches all current elite programs for the given `task_id` from the `map_elites_archive` table. These programs form the basis for parent selection.
-2.  **Parent Selection (`SelectionControllerAgent.select_parents`)**:
-    *   The list of current elites is passed to this method.
-    *   **Tournament Selection**: `num_parents` (e.g., `settings.POPULATION_SIZE // 2`) parents are selected from the elites.
-        *   For each parent to select:
-            *   A "tournament" of `settings.TOURNAMENT_SIZE` individuals is randomly sampled from the elites.
-            *   The individual with the best scalar fitness (calculated by `_calculate_scalar_fitness`) in the tournament wins and is selected as a parent.
-        *   This process allows for diversity as less-fit individuals can still be selected if they win their local tournament. Parents can be selected multiple times (selection with replacement).
-3.  **Offspring Generation (`TaskManagerAgent.generate_offspring` called in a loop)**:
+1.  **Parent Selection (Island Model) (`SelectionControllerAgent.select_parents`)**:
+    *   The `SelectionControllerAgent` selects parents from each island's sub-population. This typically involves:
+        *   Iterating through each island.
+        *   Applying a selection strategy (e.g., tournament selection) within that island to choose parents.
+    *   The collection of selected parents from all islands is returned.
+2.  **Offspring Generation (`TaskManagerAgent.generate_offspring` called in a loop)**:
     *   For each selected parent (or pair, if crossover were implemented), one or more offspring are generated up to `settings.POPULATION_SIZE` new individuals for the generation.
     *   **Determine Prompt Type**:
         *   If the parent program has significant errors and low correctness, a "bug_fix" prompt is designed.
@@ -147,27 +148,37 @@ This loop runs for `settings.GENERATIONS`:
     *   **Saving Offspring (`DatabaseAgent.save_program`)**: The unevaluated offspring `Program` object is saved to the database.
 4.  **Evaluation of Offspring (`TaskManagerAgent.evaluate_population`)**:
     *   Same process as in Phase 1, Step 3. Offspring are evaluated, fitness scores and behavioral descriptors are calculated, and the updated `Program` objects are saved.
-5.  **Offering Offspring to Archive (`TaskManagerAgent` calls `DatabaseAgent.offer_to_archive`)**:
-    *   Same process as in Phase 1, Step 4. Each successfully evaluated offspring is offered to the MAP-Elites archive.
-6.  **End-of-Generation Reporting (`TaskManagerAgent`)**:
-    *   Logs information about the best elite currently in the archive.
-    *   Calls `MonitoringAgent.report_archive_status` to log the archive's state.
+5.  **Survivor Selection and Island Update (Island Model) (`SelectionControllerAgent.select_survivors`)**:
+    *   The evaluated offspring are integrated back into the island structure.
+    *   The `SelectionControllerAgent` applies survivor selection strategies within each island (e.g., replacing worst individuals, elitism) to maintain island population sizes.
+    *   Migration between islands may occur at this stage or periodically, where good individuals from one island are copied to others to promote genetic diversity.
+6.  **Offering Offspring to Archive (If MAP-Elites is Active) (`TaskManagerAgent` calls `DatabaseAgent.offer_to_archive`)**:
+    *   Same process as in Phase 1, Step 4. Each successfully evaluated offspring is offered to the MAP-Elites archive. (Note: This MAP-Elites functionality is currently basic).
+7.  **End-of-Generation Reporting (`TaskManagerAgent`)**:
+    *   Logs information about the best program(s) in the current population (e.g., best per island or overall).
+    *   If MAP-Elites is active and being monitored, calls `MonitoringAgent.report_archive_status` to log the archive's state.
 
 **Phase 3: Completion**
 
 1.  **Final Report (`TaskManagerAgent`)**:
-    *   After all generations are complete, the `TaskManagerAgent` retrieves the final set of best elites (e.g., top `settings.ELITISM_COUNT`) from the `DatabaseAgent.get_elites_by_task`.
+    *   After all generations are complete, the `TaskManagerAgent` identifies the best programs from the final population (e.g., best from each island, or overall best based on fitness).
+    *   If MAP-Elites is active, it may retrieve the final set of best elites (e.g., top `settings.ELITISM_COUNT`) from `DatabaseAgent.get_elites_by_task`.
     *   Logs the details of these best programs.
-    *   Calls `MonitoringAgent.report_archive_status` one last time.
-    *   Returns the list of best elite programs.
+    *   If MAP-Elites is monitored, calls `MonitoringAgent.report_archive_status` one last time.
+    *   Returns the list of best programs.
 
 ## 4. Detailed Agent Responsibilities
 
 ### 4.1. `TaskManagerAgent` (`task_manager/agent.py`)
-*   **Orchestration**: The central coordinator.
+*   **Orchestration**: The central coordinator. Manages the evolutionary process, which by default in the current codebase, is based on an island model.
 *   **Initialization**: Sets up other agents, loads configurations.
-*   `initialize_population()`: Generates, evaluates, and archives the initial set of programs.
-*   `manage_evolutionary_cycle()`: Runs the main evolutionary loop (parent selection, offspring generation, evaluation, archiving).
+*   `initialize_population()`: Generates and evaluates the initial set of programs. For an island model, it then calls `SelectionControllerAgent` to distribute this population into islands. If MAP-Elites were active, it would also handle initial archiving.
+*   `manage_evolutionary_cycle()`: Runs the main evolutionary loop. This involves:
+    *   Requesting parent selection from `SelectionControllerAgent` (which handles island-specific selection).
+    *   Generating offspring.
+    *   Evaluating offspring.
+    *   Requesting survivor selection and population updates from `SelectionControllerAgent` (which manages island populations and potential migration).
+    *   If MAP-Elites were active, it would also involve offering new individuals to the archive.
 *   `generate_offspring()`: Manages the process of creating a new program from a parent using `PromptDesignerAgent` and `CodeGeneratorAgent`.
 *   `evaluate_population()`: Coordinates the evaluation of a list of programs using `EvaluatorAgent`.
 *   `_calculate_scalar_fitness()`: Computes a single fitness value for a program.
@@ -209,29 +220,33 @@ This loop runs for `settings.GENERATIONS`:
 *   The `evaluate_program` method updates the `Program` object with fitness scores (`correctness`, `runtime_ms`), `status`, `errors`, and `behavioral_descriptors`.
 
 ### 4.5. `DatabaseAgent` (`database_agent/sqlite_agent.py` and `database_agent/agent.py`)
-*   **Persistence Layer**: Stores and retrieves `Program` objects and manages the MAP-Elites archive.
+*   **Persistence Layer**: Stores and retrieves `Program` objects. `SQLiteDatabaseAgent` is also intended to manage the MAP-Elites archive.
 *   `SQLiteDatabaseAgent`:
-    *   `_initialize_db()`: Creates tables (`programs`, `map_elites_archive`) if they don't exist using `DB_SCHEMA`.
-    *   `save_program()`: Saves a `Program` object to the `programs` table (INSERT OR REPLACE).
+    *   `_initialize_db()`: Creates tables (`programs`, `map_elites_archive` for MAP-Elites) if they don't exist.
+    *   `save_program()`: Saves a `Program` object to the `programs` table.
     *   `get_program()`: Retrieves a specific program by ID.
-    *   `get_elites_by_task()`: Retrieves elite programs for a specific task from the `map_elites_archive` table, joined with the `programs` table, ordered by scalar fitness.
-    *   `offer_to_archive()`: Implements the core MAP-Elites logic:
+    *   `get_elites_by_task()`: (MAP-Elites Specific) Retrieves elite programs. Note: The MAP-Elites logic (`offer_to_archive`, `get_elites_by_task`) in `SQLiteDatabaseAgent` is currently a basic scaffold and not fully functional as described below. The system primarily uses an island model if `InMemoryDatabaseAgent` is active or if `SQLiteDatabaseAgent` is used without full MAP-Elites.
+    *   `offer_to_archive()`: (MAP-Elites Specific) Implements the core MAP-Elites logic:
         *   Calculates `cell_id` from program's behavioral descriptors and task ID.
         *   If the program is better than the current elite in that cell (or cell is empty):
             *   Atomically (transaction):
-                1.  Removes the program from any other cell it might occupy for the same task (ensuring `UNIQUE(task_id, elite_program_id)`).
-                2.  Inserts/replaces the program into the target cell in `map_elites_archive` with its `scalar_fitness` and updates `last_updated`.
-*   `InMemoryDatabaseAgent`: Provides a simpler, non-persistent version. MAP-Elites features are placeholder and log warnings.
+                1.  Removes the program from any other cell it might occupy for the same task.
+                2.  Inserts/replaces the program into the target cell in `map_elites_archive`.
+*   `InMemoryDatabaseAgent`: Provides a simpler, non-persistent version. Used as the default for the island model. MAP-Elites features are placeholder and log warnings.
 
 ### 4.6. `SelectionControllerAgent` (`selection_controller/agent.py`)
-*   **Parent Selection**: Chooses programs from the population (typically the MAP-Elites archive) to be parents for the next generation.
-*   `_calculate_scalar_fitness()`: Calculates a scalar fitness value from a program's `fitness_scores` dictionary using weights from `config/settings.py`.
+*   **Parent and Survivor Selection (Island Model)**: Manages a population divided into several islands. It selects parents within islands, handles offspring assignment, and implements migration strategies between islands to share genetic material.
+*   `execute("initialize_islands", ...)`: Distributes the initial population into a configured number of islands. Each island maintains its own sub-population.
+*   `_calculate_scalar_fitness()`: Calculates a scalar fitness value from a program's `fitness_scores` dictionary using weights from `config/settings.py` (can be used by selection strategies).
 *   `select_parents()`:
-    *   Currently implemented using **Tournament Selection**.
-    *   Takes the list of current elites (from `TaskManagerAgent`) and `num_parents` to select.
-    *   For each parent slot, it randomly selects `settings.TOURNAMENT_SIZE` individuals from the elites and picks the one with the best scalar fitness.
-    *   This method allows for diverse parent selection.
-*   `select_survivors()`: (Less relevant in the MAP-Elites archive context, as the archive inherently handles elitism per cell). If used in a traditional EA, it would select the best individuals from a combined population of current individuals and offspring.
+    *   Selects parents from each island based on the island's sub-population.
+    *   Often uses **Tournament Selection** within each island:
+        *   For each parent slot needed from an island, it randomly selects `settings.TOURNAMENT_SIZE` individuals from that island's current population.
+        *   The individual with the best scalar fitness in the tournament wins and is selected as a parent.
+*   `select_survivors()`:
+    *   Integrates newly generated and evaluated offspring back into their respective islands (or distributes them).
+    *   Applies survival strategies within each island to maintain population size and potentially incorporate new individuals (e.g., replacing worst, elitism).
+*   **Migration**: Periodically, the agent may trigger migration, where a few of the best individuals from one island are copied to other islands. This helps maintain genetic diversity across the entire population and prevents premature convergence within isolated islands.
 
 ### 4.7. `MonitoringAgent` (`monitoring_agent/agent.py`)
 *   **Observability**: Logs various aspects of the evolutionary process.

@@ -14,6 +14,10 @@ from prompt_designer.agent import PromptDesignerAgent
 from code_generator.agent import CodeGeneratorAgent
 from evaluator_agent.agent import EvaluatorAgent
 from database_agent.agent import InMemoryDatabaseAgent
+try:
+    from database_agent.sqlite_agent import SQLiteDatabaseAgent
+except ImportError:
+    SQLiteDatabaseAgent = None  # Or handle more gracefully
 from selection_controller.agent import SelectionControllerAgent
 
 logger = logging.getLogger(__name__)
@@ -25,7 +29,21 @@ class TaskManagerAgent(TaskManagerInterface):
         self.prompt_designer: PromptDesignerInterface = PromptDesignerAgent(task_definition=self.task_definition)
         self.code_generator: CodeGeneratorInterface = CodeGeneratorAgent()
         self.evaluator: EvaluatorAgentInterface = EvaluatorAgent(task_definition=self.task_definition)
-        self.database: DatabaseAgentInterface = InMemoryDatabaseAgent()
+        
+        if settings.DATABASE_TYPE == "sqlite":
+            if SQLiteDatabaseAgent:
+                self.database: DatabaseAgentInterface = SQLiteDatabaseAgent()
+                logger.info("Using SQLite database.")
+            else:
+                logger.error("SQLiteDatabaseAgent is not available. Falling back to InMemoryDatabaseAgent.")
+                self.database: DatabaseAgentInterface = InMemoryDatabaseAgent()
+        elif settings.DATABASE_TYPE == "in_memory":
+            self.database: DatabaseAgentInterface = InMemoryDatabaseAgent()
+            logger.info("Using in-memory database.")
+        else:
+            logger.warning(f"Unknown DATABASE_TYPE: {settings.DATABASE_TYPE}. Defaulting to in-memory database.")
+            self.database: DatabaseAgentInterface = InMemoryDatabaseAgent()
+            
         self.selection_controller: SelectionControllerInterface = SelectionControllerAgent()
 
         self.population_size = settings.POPULATION_SIZE
