@@ -1,19 +1,16 @@
                   
-import time
-import logging
-import traceback
-import subprocess
-import tempfile
-import os
-import ast
-import json
 import asyncio
-import sys
+import json
+import logging
 import math
-from typing import Optional, Dict, Any, Tuple, Union, List
+import os
+import sys
+import tempfile
+import time
+from typing import Optional, Dict, Any, Tuple, List
 
-from core.interfaces import EvaluatorAgentInterface, Program, TaskDefinition, BaseAgent
 from config import settings
+from core.interfaces import EvaluatorAgentInterface, Program, TaskDefinition, BaseAgent
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +27,7 @@ class EvaluatorAgent(EvaluatorAgentInterface, BaseAgent):
     def _check_syntax(self, code: str) -> List[str]:
         errors = []
         try:
-            ast.parse(code)
+            compile(code+"\n", "tmp.py", 'exec')
         except SyntaxError as e:
             errors.append(f"SyntaxError: {e.msg} at line {e.lineno}, offset {e.offset}")
         except Exception as e:
