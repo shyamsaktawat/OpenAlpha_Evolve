@@ -20,19 +20,16 @@ logger = logging.getLogger(__name__)
 class CodeGeneratorAgent(CodeGeneratorInterface):
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         super().__init__(config)
-        if not settings.PRO_API_KEY:
-            raise ValueError("PRO_API_KEY not found in settings. Please set it in your .env file or config.")
-        self.model_name = settings.PRO_MODEL
+        self.model_name = settings.LITELLM_DEFAULT_MODEL
         self.generation_config = {
             "temperature": settings.LITELLM_TEMPERATURE,
             "top_p": settings.LITELLM_TOP_P,
             "top_k": settings.LITELLM_TOP_K,
             "max_tokens": settings.LITELLM_MAX_TOKENS,
-            "api_base": settings.PRO_BASE_URL
         }
         logger.info(f"CodeGeneratorAgent initialized with model: {self.model_name}")
 
-    async def generate_code(self, prompt: str, model_name: Optional[str] = None, temperature: Optional[float] = None, output_format: str = "code") -> str:
+    async def generate_code(self, prompt: str, model_name: Optional[str] = None, temperature: Optional[float] = None, output_format: str = "code", litellm_extra_params: Optional[Dict[str, Any]] = None) -> str:
         effective_model_name = model_name if model_name else self.model_name
         logger.info(f"Attempting to generate code using model: {effective_model_name}, output_format: {output_format}")
         
@@ -90,8 +87,8 @@ Make sure your diff can be applied correctly!
                 response = await acompletion(
                     model=effective_model_name,
                     messages=[{"role": "user", "content": prompt}],
-                    api_key=settings.PRO_API_KEY,
-                    **current_generation_config
+                    **(current_generation_config or {}),
+                    **(litellm_extra_params or {})
                 )
                 
                 if not response.choices:
@@ -282,7 +279,7 @@ Make sure your diff can be applied correctly!
              
         return modified_code
 
-    async def execute(self, prompt: str, model_name: Optional[str] = None, temperature: Optional[float] = None, output_format: str = "code", parent_code_for_diff: Optional[str] = None) -> str:
+    async def execute(self, prompt: str, model_name: Optional[str] = None, temperature: Optional[float] = None, output_format: str = "code", parent_code_for_diff: Optional[str] = None, litellm_extra_params: Optional[Dict[str, Any]] = None) -> str:
         """
         Generic execution method.
         If output_format is 'diff', it generates a diff and applies it to parent_code_for_diff.
@@ -294,7 +291,8 @@ Make sure your diff can be applied correctly!
             prompt=prompt, 
             model_name=model_name, 
             temperature=temperature,
-            output_format=output_format
+            output_format=output_format,
+            litellm_extra_params=litellm_extra_params
         )
 
         if output_format == "diff":
@@ -320,6 +318,7 @@ Make sure your diff can be applied correctly!
 if __name__ == '__main__':
     import asyncio
     logging.basicConfig(level=logging.DEBUG)
+    from unittest.mock import Mock # Added for mocking
     
     async def test_diff_application():
         agent = CodeGeneratorAgent()
@@ -368,7 +367,7 @@ Final line"""
         print("_apply_diff test passed.")
 
         print("\n--- Testing execute with output_format='diff' ---")
-        async def mock_generate_code(prompt, model_name, temperature, output_format):
+        async def mock_generate_code(prompt, model_name, temperature, output_format, litellm_extra_params=None): # Added litellm_extra_params
             return diff
         
         agent.generate_code = mock_generate_code 
@@ -376,7 +375,8 @@ Final line"""
         result_execute_diff = await agent.execute(
             prompt="doesn't matter for this mock", 
             parent_code_for_diff=parent,
-            output_format="diff"
+            output_format="diff",
+            litellm_extra_params={"example_param": "example_value"} # Added for testing
         )
         print("Result of execute with diff:")
         print(result_execute_diff)
@@ -388,11 +388,27 @@ Final line"""
         agent = CodeGeneratorAgent()
         
         test_prompt_full_code = "Write a Python function that takes two numbers and returns their sum."
-        generated_full_code = await agent.execute(test_prompt_full_code, temperature=0.6, output_format="code")
-        print("\n--- Generated Full Code (via execute) ---")
-        print(generated_full_code)
-        print("----------------------")
-        assert "def" in generated_full_code, "Full code generation seems to have failed."
+        
+        # Mock litellm.acompletion for full code generation test
+        original_acompletion = litellm.acompletion
+        async def mock_litellm_acompletion(*args, **kwargs):
+            mock_response = Mock()
+            mock_message = Mock()
+            mock_message.content = "def mock_function():\n  return 'mocked_code'"
+            mock_response.choices = [Mock()]
+            mock_response.choices[0].message = mock_message
+            return mock_response
+        
+        litellm.acompletion = mock_litellm_acompletion
+        
+        try:
+            generated_full_code = await agent.execute(test_prompt_full_code, temperature=0.6, output_format="code")
+            print("\n--- Generated Full Code (via execute) ---")
+            print(generated_full_code)
+            print("----------------------")
+            assert "def mock_function" in generated_full_code, "Full code generation with mock seems to have failed."
+        finally:
+            litellm.acompletion = original_acompletion
 
         parent_code_for_llm_diff = '''
 def greet(name):
