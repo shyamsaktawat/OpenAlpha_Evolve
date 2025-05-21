@@ -55,7 +55,7 @@ class TaskManagerAgent(TaskManagerInterface):
             await self.database.save_program(program)
 
         # Initialize islands with the initial population
-        await self.selection_controller.execute("initialize_islands", initial_programs=initial_population)
+        self.selection_controller.initialize_islands(initial_programs=initial_population)
         
         logger.info(f"Initialized population with {len(initial_population)} programs across {self.num_islands} islands.")
         return initial_population
@@ -103,9 +103,6 @@ class TaskManagerAgent(TaskManagerInterface):
             generation_tasks = []
             for i, parent in enumerate(parents):
                 for j in range(num_offspring_per_parent):
-                    if len(offspring_population) + len(parents) >= self.population_size and j > 0:
-                        pass
-                    
                     child_id = f"{self.task_definition.id}_gen{gen}_child{len(offspring_population)}"
                     generation_tasks.append(self.generate_offspring(parent, gen, child_id))
             
@@ -156,7 +153,7 @@ class TaskManagerAgent(TaskManagerInterface):
         
         prompt_type = "mutation"
         
-        if parent.errors and parent.fitness_scores.get("correctness", 1.0) < 0.1:
+        if parent.errors and parent.fitness_scores.get("correctness", 1.0) < settings.BUG_FIX_CORRECTNESS_THRESHOLD:
             primary_error = parent.errors[0]
             execution_details = None
             if len(parent.errors) > 1 and isinstance(parent.errors[1], str) and ("stdout" in parent.errors[1].lower() or "stderr" in parent.errors[1].lower()):

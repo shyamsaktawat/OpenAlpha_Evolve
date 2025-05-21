@@ -31,6 +31,9 @@ LITELLM_TOP_K = os.getenv("LITELLM_TOP_K")
 # Evolutionary Algorithm Settings
 POPULATION_SIZE = 5
 GENERATIONS = 2
+# Threshold for switching to bug-fix prompt
+# If a program has errors and its correctness score is below this, a bug-fix prompt will be used.
+BUG_FIX_CORRECTNESS_THRESHOLD = float(os.getenv("BUG_FIX_CORRECTNESS_THRESHOLD", "0.1"))
 ELITISM_COUNT = 1
 MUTATION_RATE = 0.7
 CROSSOVER_RATE = 0.2

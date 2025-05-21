@@ -53,6 +53,7 @@ IMPORTANT DIFF GUIDELINES:
 3. Include context around the specific line(s) you want to change
 4. Make multiple separate diff blocks if you need to change different parts of the code
 5. For each diff, the SEARCH and REPLACE blocks must be complete, valid code segments
+6. Pay special attention to matching the exact original indentation of the code in your SEARCH block, as this is crucial for correct application in environments sensitive to indentation (like Python).
 
 Example of a good diff:
 <<<<<<< SEARCH
