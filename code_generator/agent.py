@@ -1,8 +1,7 @@
 import logging
-import asyncio
-import time
 import re
 from typing import Optional, Dict, Any
+
 from litellm import acompletion
 from litellm.exceptions import (
     APIError,
@@ -12,8 +11,8 @@ from litellm.exceptions import (
     RateLimitError
 )
 
-from core.interfaces import CodeGeneratorInterface, BaseAgent, Program
 from config import settings
+from core.interfaces import CodeGeneratorInterface
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +26,14 @@ class CodeGeneratorAgent(CodeGeneratorInterface):
             "top_k": settings.LITELLM_TOP_K,
             "max_tokens": settings.LITELLM_MAX_TOKENS,
         }
+        self.litellm_extra_params = {
+            "base_url": settings.LITELLM_DEFAULT_BASE_URL,
+        }
         logger.info(f"CodeGeneratorAgent initialized with model: {self.model_name}")
 
     async def generate_code(self, prompt: str, model_name: Optional[str] = None, temperature: Optional[float] = None, output_format: str = "code", litellm_extra_params: Optional[Dict[str, Any]] = None) -> str:
         effective_model_name = model_name if model_name else self.model_name
+        litellm_extra_params = litellm_extra_params or self.litellm_extra_params
         logger.info(f"Attempting to generate code using model: {effective_model_name}, output_format: {output_format}")
         
         if output_format == "diff":
