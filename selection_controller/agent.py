@@ -299,15 +299,15 @@ class SelectionControllerAgent(SelectionControllerInterface, BaseAgent):
                                f"(correctness: {best_program.fitness_scores.get('correctness')})")
 
     async def execute(self, action: str, **kwargs) -> Any:
-        if action == "select_parents":
-            return self.select_parents(kwargs['population'], kwargs['num_parents'])
-        elif action == "select_survivors":
-            return self.select_survivors(kwargs['current_population'], kwargs['offspring_population'], kwargs['population_size'])
-        elif action == "initialize_islands":
-            self.initialize_islands(kwargs['initial_programs'])
-            return None
-        else:
-            raise ValueError(f"Unknown action: {action}")
+        # This method is part of the BaseAgent interface.
+        # Specific actions like initialize_islands, select_parents, select_survivors
+        # are called directly. If other generic async actions are needed for
+        # SelectionControllerAgent in the future, they can be dispatched here.
+        logger.warning(f"SelectionControllerAgent.execute called with action '{action}', but most actions are handled by specific methods.")
+        if action == "initialize_islands_async_placeholder": # Example if an async version was needed
+            # await self.async_initialize_islands(kwargs['initial_programs'])
+            pass
+        raise NotImplementedError(f"The generic execute method is not fully implemented for specific action '{action}' in SelectionControllerAgent. Use direct methods.")
 
                 
 if __name__ == '__main__':
