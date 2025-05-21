@@ -134,30 +134,18 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
         ```bash
         cp .env.example .env
         ```
-    *   **Open and edit the newly created `.env` file.** Replace the placeholder values (like `"your_api_key_here"` and `"your_model_name"`) with your actual API keys and desired model names. Refer to `.env.example` for a full list of configurable settings.
-        ```env
-        # LLM Configuration - Replace placeholders with your actual credentials
-        PRO_API_KEY="your_api_key_here" # Example: "sk-..." or "AIza..."
-        PRO_MODEL="your_model_name"     # Example: "gpt-4-turbo" or "gemini/gemini-1.5-pro-latest"
 
-        FLASH_API_KEY="your_api_key_here"
-        FLASH_MODEL="your_model_name"
 
-        EVALUATION_API_KEY="your_api_key_here"
-        EVALUATION_MODEL="your_model_name"
-        ```
-        *You can obtain API keys from your preferred LLM provider (OpenAI, Anthropic, Google, etc.).*
-    *   The system prioritizes configurations from the `.env` file. If specific settings are not found in `.env`, it falls back to potentially non-functional placeholders from `config/settings.py`, which will likely result in errors or limited functionality. **Ensure your `.env` file is correctly and fully set up.**
-    *   **Important Security Note**: Your `.env` file contains sensitive API keys. Keep this file confidential. If you are using Git and plan to push your fork to a public repository, ensure that `.env` is listed in your `.gitignore` file to prevent accidental commitment of your secrets. The provided `.gitignore` should already include this.
-    *   For detailed information about supported LLM providers and their configuration options, visit the [LiteLLM Documentation](https://docs.litellm.ai/docs/providers/).
+### LLM Configuration
+
 
 6.  **Review Configuration (Optional)**:
-    *   Open `config/settings.py`. Here you can:
-        *   Change the default LLM models used for generation (`PRO_MODEL`) and evaluation (`EVALUATION_MODEL`).
-        *   Adjust LiteLLM parameters like `LITELLM_MAX_TOKENS`, `LITELLM_TEMPERATURE`, etc.
-        *   Set optional base URLs for each model (`PRO_BASE_URL`, `FLASH_BASE_URL`, `EVALUATION_BASE_URL`).
-        *   Modify evolutionary parameters like `POPULATION_SIZE` and `GENERATIONS`.
-        *   Adjust API retry settings or logging levels.
+    *   Open `config/settings.py`. While most LLM settings are now primarily managed via `.env` and LiteLLM, you can still review:
+        *   Default model fallbacks if environment variables are not set (e.g., `LITELLM_DEFAULT_MODEL` has a fallback in `settings.py`).
+        *   The specific model names used for evaluation (`EVALUATION_MODEL`) and fast operations (`FLASH_MODEL`) if not overridden in `.env`.
+        *   Default LiteLLM parameters like `LITELLM_MAX_TOKENS`, `LITELLM_TEMPERATURE`, etc., which serve as defaults if not set in `.env`.
+        *   Evolutionary parameters like `POPULATION_SIZE` and `GENERATIONS`.
+        *   API retry settings or logging levels.
 
 7.  **Run OpenAlpha_Evolve!**
     The `main.py` file is configured with an example task (Dijkstra's algorithm). To run it:
