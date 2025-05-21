@@ -46,6 +46,7 @@ async def main():
             "If a node is unreachable from the start node, its distance should be considered infinity. "
             "The function should return a dictionary where keys are node identifiers and values are the "
             "calculated shortest distances from the start node. The start node\'s distance to itself is 0."
+            "some nodes might be given only implicitly in the inner dictionaries."
         ),
         function_name_to_evolve="solve_shortest_paths",                    
         input_output_examples=[
@@ -86,7 +87,7 @@ async def main():
                     {"s": {"u": 10, "x": 5}, "u": {"v": 1, "x": 2}, "v": {"y": 4}, "x": {"u": 3, "v": 9, "y": 2}, "y": {"s": 7, "v": 6}},
                     "s"
                 ],
-                "output": {"s": 0, "u": 7, "v": 8, "x": 5, "y": 7}                           
+                "output": {"s": 0, "u": 8, "v": 9, "x": 5, "y": 7}
             },
             {                                       
                 "input": [
@@ -103,7 +104,7 @@ async def main():
                     },
                     "A"
                 ],
-                "output": {"A": 0, "B": 1, "C": 10, "D": 3, "E": 6, "F": 11, "G": 6, "H": 12, "I": 8}
+                "output": {"A": 0, "B": 1, "C": 10, "D": 3, "E": 6, "F": 11, "G": 6, "H": 13, "I": 8}
             }
         ],
         allowed_imports=["heapq"],                                                                   

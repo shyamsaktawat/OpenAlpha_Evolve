@@ -90,6 +90,10 @@ class SelectionControllerInterface(BaseAgent):
     def select_survivors(self, current_population: List[Program], offspring_population: List[Program], population_size: int) -> List[Program]:
         pass
 
+    @abstractmethod
+    def initialize_islands(self, initial_programs: List[Program]) -> None:
+        pass
+
 class RLFineTunerInterface(BaseAgent):
     @abstractmethod
     async def update_policy(self, experience_data: List[Dict]):
