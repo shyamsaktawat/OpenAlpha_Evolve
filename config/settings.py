@@ -44,6 +44,10 @@ MIGRATION_RATE = 0.2  # Rate at which programs migrate between islands
 DEBUG = os.getenv("DEBUG", False)
 EVALUATION_TIMEOUT_SECONDS = 800
 
+# Docker Execution Settings
+DOCKER_IMAGE_NAME = os.getenv("DOCKER_IMAGE_NAME", "code-evaluator:latest")
+DOCKER_NETWORK_DISABLED = os.getenv("DOCKER_NETWORK_DISABLED", "True").lower() == "true"
+
 DATABASE_TYPE = "in_memory"
 DATABASE_PATH = "program_database.json"
 

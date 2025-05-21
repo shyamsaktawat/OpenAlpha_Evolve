@@ -56,8 +56,8 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
 *   **LLM-Powered Code Generation**: Leverages state-of-the-art Large Language Models through LiteLLM, supporting multiple providers (OpenAI, Anthropic, Google, etc.).
 *   **Evolutionary Algorithm Core**: Implements iterative improvement through selection, LLM-driven mutation/bug-fixing (via diffs), and survival.
 *   **Modular Agent Architecture**: Easily extend or replace individual components (e.g., use a different LLM, database, or evaluation strategy).
-*   **Automated Program Evaluation**: Syntax checking and functional testing against user-provided examples with timeout mechanisms.
-*   **Configuration Management**: Easily tweak parameters like population size, number of generations, LLM models, and API settings via `config/settings.py`.
+*   **Automated Program Evaluation**: Syntax checking and functional testing against user-provided examples. Code execution is sandboxed using **Docker containers** for improved security and dependency management, with configurable timeout mechanisms.
+*   **Configuration Management**: Easily tweak parameters like population size, number of generations, LLM models, API settings, and Docker configurations via `config/settings.py` and `.env`.
 *   **Detailed Logging**: Comprehensive logs provide insights into each step of the evolutionary process.
 *   **Diff-based Mutations**: The system is designed to use diffs for mutations and bug fixes, allowing for more targeted code modifications by the LLM.
 *   **Open Source & Extensible**: Built with Python, designed for experimentation and community contributions.
@@ -98,6 +98,7 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
     *   Python 3.10+
     *   `pip` for package management
     *   `git` for cloning
+    *   **Docker**: For sandboxed code evaluation. Ensure Docker Desktop (Windows/Mac) or Docker Engine (Linux) is installed and running. Visit [docker.com](https://www.docker.com/get-started) for installation instructions.
 
 2.  **Clone the Repository**:
     ```bash
@@ -137,15 +138,27 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
     *   The system will prioritize the keys from the `.env` file. If they're not found, it will use non-functional placeholders from `config/settings.py` and print a warning. **Ensure your `.env` file is correctly set up.**
     *   For detailed information about supported LLM providers and their configuration options, visit the [LiteLLM Documentation](https://docs.litellm.ai/docs/providers/).
 
-6.  **Review Configuration (Optional)**:
-    *   Open `config/settings.py`. Here you can:
+6.  **Build the Evaluation Environment (Docker Image)**:
+    The `EvaluatorAgent` uses a Docker container to safely execute and evaluate generated code. You need to build this image first.
+    *   Navigate to the project root directory in your terminal.
+    *   Run the following command:
+        ```bash
+        docker build -t code-evaluator:latest evaluator_agent/
+        ```
+    *   This command looks for `evaluator_agent/Dockerfile` and builds an image named `code-evaluator:latest`. This name can be changed in the configuration (see below), but ensure you build the image with the corresponding name if you modify it.
+
+7.  **Review Configuration (Optional)**:
+    *   Open `config/settings.py` or your `.env` file. Here you can:
         *   Change the default LLM models used for generation (`PRO_MODEL`) and evaluation (`EVALUATION_MODEL`).
         *   Adjust LiteLLM parameters like `LITELLM_MAX_TOKENS`, `LITELLM_TEMPERATURE`, etc.
         *   Set optional base URLs for each model (`PRO_BASE_URL`, `FLASH_BASE_URL`, `EVALUATION_BASE_URL`).
         *   Modify evolutionary parameters like `POPULATION_SIZE` and `GENERATIONS`.
         *   Adjust API retry settings or logging levels.
+        *   **Docker Settings**:
+            *   `DOCKER_IMAGE_NAME`: Specifies the name of the Docker image to use for evaluation (defaults to `"code-evaluator:latest"`). Ensure this matches the image you built.
+            *   `DOCKER_NETWORK_DISABLED`: Boolean (defaults to `True`) that determines if the Docker container should run with networking disabled (`--network none`). Recommended to keep `True` for security.
 
-7.  **Run OpenAlpha_Evolve!**
+8.  **Run OpenAlpha_Evolve!**
     The `main.py` file is configured with an example task (Dijkstra's algorithm). To run it:
     ```bash
     python -m main
@@ -187,8 +200,11 @@ The quality of your `description` and the comprehensiveness of your `input_outpu
 
 OpenAlpha_Evolve is a living project. Here are some directions we're excited to explore (and invite contributions for!):
 
-*   **Advanced Evaluation Sandboxing**: Implementing more robust, secure sandboxing (e.g., using Docker or `nsjail`) for code execution to handle potentially unsafe code and complex dependencies.
-*   **Sophisticated Fitness Metrics**: Beyond correctness and basic runtime, incorporating checks for code complexity (e.g., cyclomatic complexity), style (linting), resource usage (memory), and custom domain-specific metrics.
+*   **Enhanced Evaluation Sandboxing**: The current Docker-based sandboxing provides a good level of isolation. Future improvements could include:
+    *   Fine-grained resource limits (CPU, memory) for containers.
+    *   Support for custom dependencies within the evaluation image if tasks require specific libraries not in the base Python image.
+    *   Exploring alternatives like `nsjail` for specific use cases or even lighter-weight sandboxing if appropriate.
+*   **Sophisticated Fitness Metrics**: Beyond correctness and basic runtime, incorporating checks for code complexity (e.g., cyclomatic complexity), style (linting), resource usage (memory within the container), and custom domain-specific metrics.
 *   **Reinforcement Learning for Prompt Strategy**: Implementing the `RLFineTunerAgent` to dynamically optimize prompt engineering strategies based on performance feedback.
 *   **Enhanced Monitoring & Visualization**: Developing tools (via `MonitoringAgent`) to visualize the evolutionary process, track fitness landscapes, and understand agent behavior (e.g., using a simple web dashboard or plots).
 *   **Expanded LLM Provider Support**: Adding support for more LLM providers through LiteLLM's growing ecosystem.
