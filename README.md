@@ -121,29 +121,53 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
         ```bash
         cp .env.example .env
         ```
-    *   **Edit the `.env` file** and add your API keys and model configurations, more settings can be found in .env.example:
-        ```env
-        # LLM Configuration
-        PRO_API_KEY="your_api_key_here"
-        PRO_MODEL="your_model_name"
+    *   **Edit the `.env` file** to set up your LLM configuration.
 
-        FLASH_API_KEY="your_api_key_here"
-        FLASH_MODEL="your_model_name"
+### LLM Configuration
 
-        EVALUATION_API_KEY="your_api_key_here"
-        EVALUATION_MODEL="your_model_name"
-        ```
-        *You can obtain API keys from your preferred LLM provider (OpenAI, Anthropic, Google, etc.).*
-    *   The system will prioritize the keys from the `.env` file. If they're not found, it will use non-functional placeholders from `config/settings.py` and print a warning. **Ensure your `.env` file is correctly set up.**
-    *   For detailed information about supported LLM providers and their configuration options, visit the [LiteLLM Documentation](https://docs.litellm.ai/docs/providers/).
+This project uses [LiteLLM](https://github.com/BerriAI/litellm) to connect to a wide variety of Large Language Models (LLMs).
+
+#### Default Model
+You need to specify a default model for code generation by setting the `LITELLM_DEFAULT_MODEL` variable in your `.env` file. This model string should be one supported by LiteLLM.
+
+Example `.env` entry:
+```
+LITELLM_DEFAULT_MODEL=gpt-3.5-turbo
+```
+Other examples: `ollama/mistral` (for a local Ollama model), `claude-3-opus-20240229`, `gemini/gemini-pro`, etc. Refer to the [LiteLLM documentation](https://docs.litellm.ai/docs/providers) for a full list of supported models and their identifiers.
+
+You will also need to configure models for "flash" (fast, potentially less capable model) and "evaluation" purposes if you intend to use specialized models for these roles. These are set via `FLASH_MODEL` and `EVALUATION_MODEL` in the `.env` file. If not set, the system may default to using `LITELLM_DEFAULT_MODEL` or have specific fallbacks.
+
+Example for flash and evaluation models:
+```env
+FLASH_MODEL=gpt-3.5-turbo # Or another fast model like claude-3-haiku
+EVALUATION_MODEL=gpt-4o # A capable model for evaluation tasks
+```
+
+#### API Keys
+For most cloud-based LLM providers (OpenAI, Anthropic, Cohere, Google Gemini, Azure OpenAI, etc.), LiteLLM automatically picks up API keys from standard environment variables. You should set these in your system environment or your `.env` file.
+
+Common examples:
+- `OPENAI_API_KEY` for OpenAI models.
+- `ANTHROPIC_API_KEY` for Anthropic Claude models.
+- `COHERE_API_KEY` for Cohere models.
+- `GOOGLE_API_KEY` for Google Gemini models.
+- Specific keys like `FLASH_API_KEY` and `EVALUATION_API_KEY` can be set in `.env` if the models for these roles (e.g. `FLASH_MODEL`, `EVALUATION_MODEL`) require dedicated keys different from the default model's key or if they are not covered by LiteLLM's automatic environment variable pickup for their specific provider.
+
+For specific provider requirements, including environment variables for services like Azure OpenAI (which requires multiple: `AZURE_API_KEY`, `AZURE_API_BASE`, `AZURE_API_VERSION`, `AZURE_DEPLOYMENT_ID`), please consult the [LiteLLM documentation](https://docs.litellm.ai/docs/providers).
+
+**Ensure your `.env` file is correctly set up with the necessary API keys and model identifiers.**
+
+#### Other Generation Parameters
+Default parameters for LLM calls, such as `LITELLM_MAX_TOKENS`, `LITELLM_TEMPERATURE`, `LITELLM_TOP_P`, and `LITELLM_TOP_K`, are also configured via environment variables in the `.env` file (see `.env.example`). These control aspects like the maximum length of generated code and the creativity of the output.
 
 6.  **Review Configuration (Optional)**:
-    *   Open `config/settings.py`. Here you can:
-        *   Change the default LLM models used for generation (`PRO_MODEL`) and evaluation (`EVALUATION_MODEL`).
-        *   Adjust LiteLLM parameters like `LITELLM_MAX_TOKENS`, `LITELLM_TEMPERATURE`, etc.
-        *   Set optional base URLs for each model (`PRO_BASE_URL`, `FLASH_BASE_URL`, `EVALUATION_BASE_URL`).
-        *   Modify evolutionary parameters like `POPULATION_SIZE` and `GENERATIONS`.
-        *   Adjust API retry settings or logging levels.
+    *   Open `config/settings.py`. While most LLM settings are now primarily managed via `.env` and LiteLLM, you can still review:
+        *   Default model fallbacks if environment variables are not set (e.g., `LITELLM_DEFAULT_MODEL` has a fallback in `settings.py`).
+        *   The specific model names used for evaluation (`EVALUATION_MODEL`) and fast operations (`FLASH_MODEL`) if not overridden in `.env`.
+        *   Default LiteLLM parameters like `LITELLM_MAX_TOKENS`, `LITELLM_TEMPERATURE`, etc., which serve as defaults if not set in `.env`.
+        *   Evolutionary parameters like `POPULATION_SIZE` and `GENERATIONS`.
+        *   API retry settings or logging levels.
 
 7.  **Run OpenAlpha_Evolve!**
     The `main.py` file is configured with an example task (Dijkstra's algorithm). To run it:
