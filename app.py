@@ -11,19 +11,19 @@ import logging
 from datetime import datetime
 from dotenv import load_dotenv
 
-# Ensure the project root is in the Python path
+                                               
 project_root = os.path.abspath(os.path.dirname(__file__))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-# Load environment variables from .env file
+                                           
 load_dotenv()
 
 from core.interfaces import TaskDefinition, Program
 from task_manager.agent import TaskManagerAgent
 from config import settings
 
-# Setup a string handler to capture log messages
+                                                
 class StringIOHandler(logging.Handler):
     def __init__(self):
         super().__init__()
@@ -42,35 +42,35 @@ class StringIOHandler(logging.Handler):
     def clear(self):
         self.log_capture = []
 
-# Create a string handler
+                         
 string_handler = StringIOHandler()
 string_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 
-# Add handler to root logger
+                            
 root_logger = logging.getLogger()
 root_logger.addHandler(string_handler)
 
-# Also send logs to console
+                           
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 root_logger.addHandler(console_handler)
 
-# Initialize logger for this module
+                                   
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Set module loggers to DEBUG to get more information
+                                                     
 for module in ['task_manager.agent', 'code_generator.agent', 'evaluator_agent.agent', 'database_agent.agent', 
               'selection_controller.agent', 'prompt_designer.agent']:
     logging.getLogger(module).setLevel(logging.DEBUG)
 
+                         
 # Check if API key is set
-if settings.GEMINI_API_KEY.startswith("YOUR_API_KEY") or not settings.GEMINI_API_KEY:
-    API_KEY_WARNING = "⚠️ API key not properly set! Please set your Gemini API key in the .env file."
-else:
-    API_KEY_WARNING = ""
+if settings.PRO_API_KEY.startswith("YOUR_API_KEY") or not settings.PRO_API_KEY:
+    print("Error: Please set your API key in the .env file")
+    sys.exit(1)
 
-# Global variables for storing evolution state
+                                              
 current_results = []
 
 async def run_evolution(
@@ -80,35 +80,41 @@ async def run_evolution(
     examples_json, 
     allowed_imports_text,
     population_size, 
-    generations
+    generations,
+    num_islands,
+    migration_frequency,
+    migration_rate
 ):
     """Run the evolutionary process with the given parameters."""
     progress = gr.Progress()
-    # Clear previous logs
+                         
     string_handler.clear()
     
     try:
-        # Parse the input/output examples
+                                         
         try:
             examples = json.loads(examples_json)
             if not isinstance(examples, list):
                 return "Error: Examples must be a JSON list of objects with 'input' and 'output' keys."
             
-            # Validate each example
+                                   
             for i, example in enumerate(examples):
                 if not isinstance(example, dict) or "input" not in example or "output" not in example:
                     return f"Error in example {i+1}: Each example must be an object with 'input' and 'output' keys."
         except json.JSONDecodeError:
             return "Error: Examples must be valid JSON. Please check the format."
         
-        # Parse allowed imports
+                               
         allowed_imports = [imp.strip() for imp in allowed_imports_text.split(",") if imp.strip()]
         
-        # Update settings from UI
+                                 
         settings.POPULATION_SIZE = int(population_size)
         settings.GENERATIONS = int(generations)
+        settings.NUM_ISLANDS = int(num_islands)
+        settings.MIGRATION_FREQUENCY = int(migration_frequency)
+        settings.MIGRATION_RATE = float(migration_rate)
         
-        # Create a task definition
+                                  
         task = TaskDefinition(
             id=task_id,
             description=description,
@@ -117,33 +123,33 @@ async def run_evolution(
             allowed_imports=allowed_imports
         )
         
-        # Set up a progress callback
+                                    
         async def progress_callback(generation, max_generations, stage, message=""):
-            # Calculate progress based on generation and stage
-            # Stages: 0=init, 1=evaluation, 2=selection, 3=reproduction
-            stage_weight = 0.25  # Each stage is worth 25% of a generation
+                                                              
+                                                                       
+            stage_weight = 0.25                                           
             gen_progress = generation + (stage * stage_weight)
             total_progress = gen_progress / max_generations
             
-            # Update the progress bar
+                                     
             progress(min(total_progress, 0.99), f"Generation {generation}/{max_generations}: {message}")
             
-            # Also log the progress
+                                   
             logger.info(f"Progress: Generation {generation}/{max_generations} - {message}")
             
-            # Allow the UI to update
+                                    
             await asyncio.sleep(0.1)
         
-        # Initialize the TaskManagerAgent with the task definition
+                                                                  
         task_manager = TaskManagerAgent(task_definition=task)
         
-        # Add a custom attribute to track progress (doesn't affect the class behavior)
+                                                                                      
         task_manager.progress_callback = progress_callback
         
-        # Execute the evolutionary process with progress updates
+                                                                
         progress(0, "Starting evolutionary process...")
         
-        # First listener setup to catch log messages about generations
+                                                                      
         class GenerationProgressListener(logging.Handler):
             def __init__(self):
                 super().__init__()
@@ -153,12 +159,12 @@ async def run_evolution(
             def emit(self, record):
                 try:
                     msg = record.getMessage()
-                    # Check for generation progress messages
+                                                            
                     if "--- Generation " in msg:
                         gen_parts = msg.split("Generation ")[1].split("/")[0]
                         try:
                             self.current_gen = int(gen_parts)
-                            # Update progress bar
+                                                 
                             asyncio.create_task(
                                 progress_callback(
                                     self.current_gen, 
@@ -170,7 +176,7 @@ async def run_evolution(
                         except ValueError:
                             pass
                     elif "Evaluating population" in msg:
-                        # Update progress for evaluation stage
+                                                              
                         asyncio.create_task(
                             progress_callback(
                                 self.current_gen, 
@@ -180,7 +186,7 @@ async def run_evolution(
                             )
                         )
                     elif "Selected " in msg and " parents" in msg:
-                        # Update progress for selection stage
+                                                             
                         asyncio.create_task(
                             progress_callback(
                                 self.current_gen, 
@@ -190,7 +196,7 @@ async def run_evolution(
                             )
                         )
                     elif "Generated " in msg and " offspring" in msg:
-                        # Update progress for reproduction stage
+                                                                
                         asyncio.create_task(
                             progress_callback(
                                 self.current_gen, 
@@ -202,34 +208,35 @@ async def run_evolution(
                 except Exception:
                     pass
         
-        # Add our progress listener
+                                   
         progress_listener = GenerationProgressListener()
         progress_listener.setLevel(logging.INFO)
         root_logger.addHandler(progress_listener)
         
         try:
-            # Execute the evolutionary process
+                                              
             best_programs = await task_manager.execute()
             progress(1.0, "Evolution completed!")
             
-            # Store results for display
+                                       
             global current_results
             current_results = best_programs if best_programs else []
             
-            # Format results
+                            
             if best_programs:
                 result_text = f"✅ Evolution completed successfully! Found {len(best_programs)} solution(s).\n\n"
                 for i, program in enumerate(best_programs):
                     result_text += f"### Solution {i+1}\n"
                     result_text += f"- ID: {program.id}\n"
                     result_text += f"- Fitness: {program.fitness_scores}\n"
-                    result_text += f"- Generation: {program.generation}\n\n"
+                    result_text += f"- Generation: {program.generation}\n"
+                    result_text += f"- Island ID: {program.island_id}\n\n"
                     result_text += "```python\n" + program.code + "\n```\n\n"
                 return result_text
             else:
                 return "❌ Evolution completed, but no suitable solutions were found."
         finally:
-            # Remove our progress listener when done
+                                                    
             root_logger.removeHandler(progress_listener)
     
     except Exception as e:
@@ -246,7 +253,7 @@ def get_code(solution_index):
     except Exception as e:
         return f"Error retrieving solution: {str(e)}"
 
-# Example templates: Fibonacci task
+                                   
 FIB_EXAMPLES = '''[
     {"input": [0], "output": 0},
     {"input": [1], "output": 1},
@@ -255,7 +262,7 @@ FIB_EXAMPLES = '''[
 ]'''
 
 def set_fib_example():
-    """Populate the form with the Fibonacci task example."""
+    """Set the UI to a Fibonacci example task."""
     return (
         "fibonacci_task",
         "Write a Python function that computes the nth Fibonacci number (0-indexed), where fib(0)=0 and fib(1)=1.",
@@ -264,12 +271,15 @@ def set_fib_example():
         ""
     )
 
-# Create the Gradio interface
+                             
 with gr.Blocks(title="OpenAlpha_Evolve") as demo:
-    gr.Markdown("# 🧬 OpenAlpha_Evolve: AI-Driven Algorithm Evolution")
-    
-    if API_KEY_WARNING:
-        gr.Markdown(f"## ⚠️ {API_KEY_WARNING}")
+    gr.Markdown("# 🧬 OpenAlpha_Evolve: Autonomous Algorithm Evolution")
+    gr.Markdown("""
+    * **Custom Tasks:** Write your own problem definition, examples, and allowed imports in the fields below.
+    * **Multi-Model Support:** Additional language model backends coming soon.
+    * **Evolutionary Budget:** For novel, complex solutions consider using large budgets (e.g., 100+ generations and population sizes of hundreds or thousands).
+    * **Island Model:** The population is divided into islands that evolve independently, with periodic migration between them.
+    """)
     
     with gr.Row():
         with gr.Column(scale=1):
@@ -325,18 +335,43 @@ with gr.Blocks(title="OpenAlpha_Evolve") as demo:
                 )
             
             with gr.Row():
-                fib_btn = gr.Button("🔢 Fibonacci Example")
-                run_btn = gr.Button("🚀 Run Evolution", variant="primary")
+                num_islands = gr.Slider(
+                    label="Number of Islands",
+                    minimum=1,
+                    maximum=5,
+                    value=3,
+                    step=1
+                )
+                
+                migration_frequency = gr.Slider(
+                    label="Migration Frequency (generations)",
+                    minimum=1,
+                    maximum=5,
+                    value=2,
+                    step=1
+                )
+                
+                migration_rate = gr.Slider(
+                    label="Migration Rate",
+                    minimum=0.1,
+                    maximum=0.5,
+                    value=0.2,
+                    step=0.1
+                )
+            
+            with gr.Row():
+                example_btn = gr.Button("📘 Fibonacci Example")
+            
+            run_btn = gr.Button("🚀 Run Evolution", variant="primary")
         
         with gr.Column(scale=1):
             with gr.Tab("Results"):
                 results_text = gr.Markdown("Evolution results will appear here...")
             
-            # No Live Logs tab: progress is shown in terminal only
+                                                                  
     
-    # Event handlers
-    # Example setter for Fibonacci
-    fib_btn.click(
+                    
+    example_btn.click(
         set_fib_example,
         outputs=[task_id, description, function_name, examples_json, allowed_imports]
     )
@@ -350,12 +385,15 @@ with gr.Blocks(title="OpenAlpha_Evolve") as demo:
             examples_json,
             allowed_imports,
             population_size, 
-            generations
+            generations,
+            num_islands,
+            migration_frequency,
+            migration_rate
         ],
         outputs=results_text
     )
 
-# Launch the app
+                
 if __name__ == "__main__":
-    # Launch with share=True to create a public link
+                                                    
     demo.launch(share=True) 

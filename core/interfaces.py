@@ -1,27 +1,29 @@
-# Core components, interfaces, data models 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from dataclasses import dataclass, field
+import time
 
 @dataclass
 class Program:
     id: str
     code: str
-    fitness_scores: Dict[str, float] = field(default_factory=dict) # e.g., {"correctness": 1.0, "runtime_ms": 50.0}
+    fitness_scores: Dict[str, float] = field(default_factory=dict)                                                 
     generation: int = 0
     parent_id: Optional[str] = None
+    island_id: Optional[int] = None
     errors: List[str] = field(default_factory=list)
-    status: str = "unevaluated" # e.g., unevaluated, evaluating, evaluated, failed_evaluation
+    status: str = "unevaluated"
+    created_at: float = field(default_factory=lambda: time.time())  # Track program age
 
 @dataclass
 class TaskDefinition:
     id: str
-    description: str # Natural language description of the problem
-    function_name_to_evolve: Optional[str] = None # Name of the function the LLM should generate/evolve
-    input_output_examples: Optional[List[Dict[str, Any]]] = None # For testing, e.g. [{"input": ..., "output": ...}]
-    evaluation_criteria: Optional[Dict[str, Any]] = None # e.g., {"target_metric": "runtime_ms", "goal": "minimize"}
+    description: str                                              
+    function_name_to_evolve: Optional[str] = None                                                      
+    input_output_examples: Optional[List[Dict[str, Any]]] = None                                                    
+    evaluation_criteria: Optional[Dict[str, Any]] = None                                                            
     initial_code_prompt: Optional[str] = "Provide an initial Python solution for the following problem:"
-    allowed_imports: Optional[List[str]] = None # MODIFIED: Added allowed_imports
+    allowed_imports: Optional[List[str]] = None                                  
 
 class BaseAgent(ABC):
     """Base class for all agents."""
@@ -54,7 +56,7 @@ class PromptDesignerInterface(BaseAgent):
 
 class CodeGeneratorInterface(BaseAgent):
     @abstractmethod
-    async def generate_code(self, prompt: str, provider_name: Optional[str] = None, temperature: Optional[float] = 0.7, output_format: str = "code") -> str:
+    async def generate_code(self, prompt: str, model_name: Optional[str] = None, temperature: Optional[float] = 0.7, output_format: str = "code") -> str:
         pass
 
 class EvaluatorAgentInterface(BaseAgent):
@@ -88,6 +90,10 @@ class SelectionControllerInterface(BaseAgent):
     def select_survivors(self, current_population: List[Program], offspring_population: List[Program], population_size: int) -> List[Program]:
         pass
 
+    @abstractmethod
+    def initialize_islands(self, initial_programs: List[Program]) -> None:
+        pass
+
 class RLFineTunerInterface(BaseAgent):
     @abstractmethod
     async def update_policy(self, experience_data: List[Dict]):
@@ -102,4 +108,4 @@ class MonitoringAgentInterface(BaseAgent):
     async def report_status(self):
         pass
 
-# You can add more specific data classes or interfaces here as needed 
+                                                                      

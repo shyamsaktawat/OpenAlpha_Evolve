@@ -1,17 +1,14 @@
-# Code Generator Agent
-import asyncio  # Added for retry sleep
 import logging
-import re  # Added for diff application
-from typing import Any, Dict, Optional
+import re
+from typing import Optional, Dict, Any
 
-from openai import (
+from litellm import acompletion
+from litellm.exceptions import (
     APIError,
-    APITimeoutError,
-    AsyncOpenAI,
     AuthenticationError,
     BadRequestError,
     InternalServerError,
-    RateLimitError,
+    RateLimitError
 )
 
 from config import settings
@@ -22,46 +19,67 @@ logger = logging.getLogger(__name__)
 class CodeGeneratorAgent(CodeGeneratorInterface):
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         super().__init__(config)
-        self.pro_provider = settings.CUSTOM_PROVIDERS.get(settings.PRO_KEY)
-        self.flash_provider = settings.CUSTOM_PROVIDERS.get(settings.FLASH_KEY)
-        self.evaluation_provider = settings.CUSTOM_PROVIDERS.get(settings.EVALUATION_KEY)
-
-
-        for provider in settings.CUSTOM_PROVIDERS:
-            if not settings.CUSTOM_PROVIDERS[provider]['api_key']:
-                raise ValueError(f"{provider} API_KEY not found in settings. Please set it in your .env file or config.")
-
-        self.client = AsyncOpenAI(base_url=settings.CUSTOM_PROVIDERS[settings.FLASH_KEY]['base_url'], api_key=settings.CUSTOM_PROVIDERS[settings.FLASH_KEY]['api_key'])
+        self.model_name = settings.LITELLM_DEFAULT_MODEL
         self.generation_config = {
-            "temperature":0.7,
-            "top_p":0.9,
-            "top_k":40,
-            #"max_tokens" : 1000, # optional if needed
+            "temperature": settings.LITELLM_TEMPERATURE,
+            "top_p": settings.LITELLM_TOP_P,
+            "top_k": settings.LITELLM_TOP_K,
+            "max_tokens": settings.LITELLM_MAX_TOKENS,
         }
+        self.litellm_extra_params = {
+            "base_url": settings.LITELLM_DEFAULT_BASE_URL,
+        }
+        logger.info(f"CodeGeneratorAgent initialized with model: {self.model_name}")
 
-
-    async def generate_code(self, prompt: str, provider_name: Optional[str] = None, temperature: Optional[float] = None, output_format: str = "code") -> str:
-        provider_name = provider_name if provider_name else settings.FLASH_KEY 
-        logger.info(f"Attempting to generate code using model: {provider_name}, output_format: {output_format}")
-
-        # Add diff instructions if requested
+    async def generate_code(self, prompt: str, model_name: Optional[str] = None, temperature: Optional[float] = None, output_format: str = "code", litellm_extra_params: Optional[Dict[str, Any]] = None) -> str:
+        effective_model_name = model_name if model_name else self.model_name
+        litellm_extra_params = litellm_extra_params or self.litellm_extra_params
+        logger.info(f"Attempting to generate code using model: {effective_model_name}, output_format: {output_format}")
+        
         if output_format == "diff":
             prompt += '''
 
-Provide your changes as a sequence of diff blocks in the following format:
+I need you to provide your changes as a sequence of diff blocks in the following format:
+
 <<<<<<< SEARCH
-# Original code block to be found and replaced
+# Original code block to be found and replaced (COPY EXACTLY from original)
 =======
 # New code block to replace the original
 >>>>>>> REPLACE
-Ensure the SEARCH block is an exact segment from the current program.
-Describe each change with such a SEARCH/REPLACE block.
-Make sure that the changes you propose are consistent with each other.
+
+IMPORTANT DIFF GUIDELINES:
+1. The SEARCH block MUST be an EXACT copy of code from the original - match whitespace, indentation, and line breaks precisely
+2. Each SEARCH block should be large enough (3-5 lines minimum) to uniquely identify where the change should be made
+3. Include context around the specific line(s) you want to change
+4. Make multiple separate diff blocks if you need to change different parts of the code
+5. For each diff, the SEARCH and REPLACE blocks must be complete, valid code segments
+6. Pay special attention to matching the exact original indentation of the code in your SEARCH block, as this is crucial for correct application in environments sensitive to indentation (like Python).
+
+Example of a good diff:
+<<<<<<< SEARCH
+def calculate_sum(numbers):
+    result = 0
+    for num in numbers:
+        result += num
+    return result
+=======
+def calculate_sum(numbers):
+    if not numbers:
+        return 0
+    result = 0
+    for num in numbers:
+        result += num
+    return result
+>>>>>>> REPLACE
+
+Make sure your diff can be applied correctly!
 '''
         
         logger.debug(f"Received prompt for code generation (format: {output_format}):\n--PROMPT START--\n{prompt}\n--PROMPT END--")
-
+        
+        current_generation_config = self.generation_config.copy()
         if temperature is not None:
+            current_generation_config["temperature"] = temperature
             logger.debug(f"Using temperature override: {temperature}")
 
         retries = settings.API_MAX_RETRIES
@@ -69,46 +87,43 @@ Make sure that the changes you propose are consistent with each other.
         
         for attempt in range(retries):
             try:
-                logger.debug(f"API Call Attempt {attempt + 1} of {retries} to {provider_name}.")
-
-                client = self.client
-                client.api_key = settings.CUSTOM_PROVIDERS[provider_name]['api_key']
-                client.base_url = settings.CUSTOM_PROVIDERS[provider_name]['base_url']
-
-                response = await client.chat.completions.create(
-                    model=settings.CUSTOM_PROVIDERS[provider_name]['model'],
+                logger.debug(f"API Call Attempt {attempt + 1} of {retries} to {effective_model_name}.")
+                response = await acompletion(
+                    model=effective_model_name,
                     messages=[{"role": "user", "content": prompt}],
-                    max_tokens=self.generation_config["max_tokens"] if "max_tokens" in self.generation_config else None,
-                    temperature=temperature,
-                    top_p=self.generation_config["top_p"]
+                    **(current_generation_config or {}),
+                    **(litellm_extra_params or {})
                 )
+                
+                if not response.choices:
+                    logger.warning("LLM API returned no choices.")
+                    return ""
 
                 generated_text = response.choices[0].message.content
-
-                logger.debug(f"Raw response from API:\n--RESPONSE START--\n{generated_text}\n--RESPONSE END--")
-                if generated_text is None:
-                    logger.error("Received None as generated text from API.")
-                    return ""
+                logger.debug(f"Raw response from LLM API:\n--RESPONSE START--\n{generated_text}\n--RESPONSE END--")
+                
                 if output_format == "code":
+                    if "```python" in generated_text:
+                        pass
                     cleaned_code = self._clean_llm_output(generated_text)
                     logger.debug(f"Cleaned code:\n--CLEANED CODE START--\n{cleaned_code}\n--CLEANED CODE END--")
                     return cleaned_code
-                else: # output_format == "diff"
+                else:                           
                     logger.debug(f"Returning raw diff text:\n--DIFF TEXT START--\n{generated_text}\n--DIFF TEXT END--")
-                    return generated_text # Return raw diff text
-            except (APIError, InternalServerError, TimeoutError, RateLimitError, APITimeoutError, AuthenticationError, BadRequestError) as e:
-                logger.warning(f"API error on attempt {attempt + 1}: {type(e).__name__} - {e}. Retrying in {delay}s...")
+                    return generated_text                        
+            except (APIError, InternalServerError, TimeoutError, RateLimitError, AuthenticationError, BadRequestError) as e:
+                logger.warning(f"LLM API error on attempt {attempt + 1}: {type(e).__name__} - {e}. Retrying in {delay}s...")
                 if attempt < retries - 1:
                     await asyncio.sleep(delay)
                     delay *= 2 
                 else:
-                    logger.error(f"API call failed after {retries} retries for model {provider_name}.")
+                    logger.error(f"LLM API call failed after {retries} retries for model {effective_model_name}.")
                     raise
             except Exception as e:
-                logger.error(f"An unexpected error occurred during code generation with {provider_name}: {e}", exc_info=True)
+                logger.error(f"An unexpected error occurred during code generation with {effective_model_name}: {e}", exc_info=True)
                 raise
-
-        logger.error(f"Code generation failed for model {provider_name} after all retries.")
+        
+        logger.error(f"Code generation failed for model {effective_model_name} after all retries.")
         return ""
 
     def _clean_llm_output(self, raw_code: str) -> str:
@@ -140,6 +155,8 @@ Make sure that the changes you propose are consistent with each other.
         =======
         # New code block
         >>>>>>> REPLACE
+        
+        Uses fuzzy matching to handle slight variations in whitespace and indentation.
         """
         logger.info("Attempting to apply diff.")
         logger.debug(f"Parent code length: {len(parent_code)}")
@@ -148,19 +165,113 @@ Make sure that the changes you propose are consistent with each other.
         modified_code = parent_code
         diff_pattern = re.compile(r"<<<<<<< SEARCH\s*?\n(.*?)\n=======\s*?\n(.*?)\n>>>>>>> REPLACE", re.DOTALL)
         
+                                                                                
+                                                             
+        replacements_made = []
+        
         for match in diff_pattern.finditer(diff_text):
             search_block = match.group(1)
             replace_block = match.group(2)
-            search_block_normalized = search_block.replace('\r\n', '\n').replace('\r', '\n')
+            
+                                                                        
+            search_block_normalized = search_block.replace('\r\n', '\n').replace('\r', '\n').strip()
             
             try:
+                                       
                 if search_block_normalized in modified_code:
+                    logger.debug(f"Found exact match for SEARCH block")
                     modified_code = modified_code.replace(search_block_normalized, replace_block, 1)
                     logger.debug(f"Applied one diff block. SEARCH:\n{search_block_normalized}\nREPLACE:\n{replace_block}")
                 else:
-                    logger.warning(f"Diff application: SEARCH block not found in current code state:\n{search_block_normalized}")
+                                                                                 
+                    normalized_search = re.sub(r'\s+', ' ', search_block_normalized)
+                    normalized_code = re.sub(r'\s+', ' ', modified_code)
+                    
+                    if normalized_search in normalized_code:
+                        logger.debug(f"Found match after whitespace normalization")
+                                                                        
+                        start_pos = normalized_code.find(normalized_search)
+                        
+                                                                          
+                        original_pos = 0
+                        norm_pos = 0
+                        
+                        while norm_pos < start_pos and original_pos < len(modified_code):
+                            if not modified_code[original_pos].isspace() or (
+                                original_pos > 0 and 
+                                modified_code[original_pos].isspace() and 
+                                not modified_code[original_pos-1].isspace()
+                            ):
+                                norm_pos += 1
+                            original_pos += 1
+                        
+                                               
+                        end_pos = original_pos
+                        remaining_chars = len(normalized_search)
+                        
+                        while remaining_chars > 0 and end_pos < len(modified_code):
+                            if not modified_code[end_pos].isspace() or (
+                                end_pos > 0 and 
+                                modified_code[end_pos].isspace() and 
+                                not modified_code[end_pos-1].isspace()
+                            ):
+                                remaining_chars -= 1
+                            end_pos += 1
+                        
+                                                                                        
+                        overlap = False
+                        for start, end in replacements_made:
+                            if (start <= original_pos <= end) or (start <= end_pos <= end):
+                                overlap = True
+                                break
+                        
+                        if not overlap:
+                                                               
+                            actual_segment = modified_code[original_pos:end_pos]
+                            logger.debug(f"Replacing segment:\n{actual_segment}\nWith:\n{replace_block}")
+                            
+                                                 
+                            modified_code = modified_code[:original_pos] + replace_block + modified_code[end_pos:]
+                            
+                                                     
+                            replacements_made.append((original_pos, original_pos + len(replace_block)))
+                        else:
+                            logger.warning(f"Diff application: Skipping overlapping replacement")
+                    else:
+                                                               
+                        search_lines = search_block_normalized.splitlines()
+                        parent_lines = modified_code.splitlines()
+                        
+                                                                      
+                        if len(search_lines) >= 3:
+                                                                  
+                            first_line = search_lines[0].strip()
+                            last_line = search_lines[-1].strip()
+                            
+                            for i, line in enumerate(parent_lines):
+                                if first_line in line.strip() and i + len(search_lines) <= len(parent_lines):
+                                                                     
+                                    if last_line in parent_lines[i + len(search_lines) - 1].strip():
+                                                                                       
+                                        matched_segment = '\n'.join(parent_lines[i:i + len(search_lines)])
+                                        
+                                                              
+                                        modified_code = '\n'.join(
+                                            parent_lines[:i] + 
+                                            replace_block.splitlines() + 
+                                            parent_lines[i + len(search_lines):]
+                                        )
+                                        logger.debug(f"Applied line-by-line match. SEARCH:\n{matched_segment}\nREPLACE:\n{replace_block}")
+                                        break
+                            else:
+                                logger.warning(f"Diff application: SEARCH block not found even with line-by-line search:\n{search_block_normalized}")
+                        else:
+                            logger.warning(f"Diff application: SEARCH block not found in current code state:\n{search_block_normalized}")
             except re.error as e:
                 logger.error(f"Regex error during diff application: {e}")
+                continue
+            except Exception as e:
+                logger.error(f"Error during diff application: {e}", exc_info=True)
                 continue
         
         if modified_code == parent_code and diff_text.strip():
@@ -172,7 +283,7 @@ Make sure that the changes you propose are consistent with each other.
              
         return modified_code
 
-    async def execute(self, prompt: str, model_name: Optional[str] = None, temperature: Optional[float] = None, output_format: str = "code", parent_code_for_diff: Optional[str] = None) -> str:
+    async def execute(self, prompt: str, model_name: Optional[str] = None, temperature: Optional[float] = None, output_format: str = "code", parent_code_for_diff: Optional[str] = None, litellm_extra_params: Optional[Dict[str, Any]] = None) -> str:
         """
         Generic execution method.
         If output_format is 'diff', it generates a diff and applies it to parent_code_for_diff.
@@ -181,10 +292,11 @@ Make sure that the changes you propose are consistent with each other.
         logger.debug(f"CodeGeneratorAgent.execute called. Output format: {output_format}")
         
         generated_output = await self.generate_code(
-            prompt=prompt,
-            provider_name=model_name,
+            prompt=prompt, 
+            model_name=model_name, 
             temperature=temperature,
-            output_format=output_format
+            output_format=output_format,
+            litellm_extra_params=litellm_extra_params
         )
 
         if output_format == "diff":
@@ -203,13 +315,14 @@ Make sure that the changes you propose are consistent with each other.
             except Exception as e:
                 logger.error(f"Error applying diff: {e}. Returning raw diff text.", exc_info=True)
                 return generated_output
-        else: # "code"
+        else:         
             return generated_output
 
-# Example Usage (for testing this agent directly)
+                                                 
 if __name__ == '__main__':
     import asyncio
     logging.basicConfig(level=logging.DEBUG)
+    from unittest.mock import Mock # Added for mocking
     
     async def test_diff_application():
         agent = CodeGeneratorAgent()
@@ -258,7 +371,7 @@ Final line"""
         print("_apply_diff test passed.")
 
         print("\n--- Testing execute with output_format='diff' ---")
-        async def mock_generate_code(prompt, model_name, temperature, output_format):
+        async def mock_generate_code(prompt, model_name, temperature, output_format, litellm_extra_params=None): # Added litellm_extra_params
             return diff
         
         agent.generate_code = mock_generate_code 
@@ -266,7 +379,8 @@ Final line"""
         result_execute_diff = await agent.execute(
             prompt="doesn't matter for this mock", 
             parent_code_for_diff=parent,
-            output_format="diff"
+            output_format="diff",
+            litellm_extra_params={"example_param": "example_value"} # Added for testing
         )
         print("Result of execute with diff:")
         print(result_execute_diff)
@@ -278,11 +392,27 @@ Final line"""
         agent = CodeGeneratorAgent()
         
         test_prompt_full_code = "Write a Python function that takes two numbers and returns their sum."
-        generated_full_code = await agent.execute(test_prompt_full_code, temperature=0.6, output_format="code")
-        print("\n--- Generated Full Code (via execute) ---")
-        print(generated_full_code)
-        print("----------------------")
-        assert "def" in generated_full_code, "Full code generation seems to have failed."
+        
+        # Mock litellm.acompletion for full code generation test
+        original_acompletion = litellm.acompletion
+        async def mock_litellm_acompletion(*args, **kwargs):
+            mock_response = Mock()
+            mock_message = Mock()
+            mock_message.content = "def mock_function():\n  return 'mocked_code'"
+            mock_response.choices = [Mock()]
+            mock_response.choices[0].message = mock_message
+            return mock_response
+        
+        litellm.acompletion = mock_litellm_acompletion
+        
+        try:
+            generated_full_code = await agent.execute(test_prompt_full_code, temperature=0.6, output_format="code")
+            print("\n--- Generated Full Code (via execute) ---")
+            print(generated_full_code)
+            print("----------------------")
+            assert "def mock_function" in generated_full_code, "Full code generation with mock seems to have failed."
+        finally:
+            litellm.acompletion = original_acompletion
 
         parent_code_for_llm_diff = '''
 def greet(name):
@@ -300,18 +430,18 @@ Current code:
 Task: Modify the `process_data` function to add 5 to the result instead of multiplying by 2.
 Also, change the greeting in `greet` to "Hi, {name}!!!".
 '''
-        # Commenting out live LLM call for automated testing in this context
-        # generated_diff_and_applied = await agent.execute(
-        #     prompt=test_prompt_diff_gen,
-        #     temperature=0.5,
-        #     output_format="diff",
-        #     parent_code_for_diff=parent_code_for_llm_diff
-        # )
-        # print("\n--- Generated Diff and Applied (Live LLM Call) ---")
-        # print(generated_diff_and_applied)
-        # print("----------------------")
-        # assert "data + 5" in generated_diff_and_applied, "LLM diff for process_data not applied as expected."
-        # assert "Hi, name!!!" in generated_diff_and_applied, "LLM diff for greet not applied as expected."
+                                                                            
+                                                           
+                                          
+                              
+                                   
+                                                           
+           
+                                                                       
+                                           
+                                         
+                                                                                                               
+                                                                                                           
         
         async def mock_generate_empty_diff(prompt, model_name, temperature, output_format):
             return "  \n  " 
@@ -331,7 +461,7 @@ Also, change the greeting in `greet` to "Hi, {name}!!!".
 
     async def main_tests():
         await test_diff_application()
-        # await test_generation() # Uncomment to run live LLM tests for generate_code
+                                                                                     
         print("\nAll selected local tests in CodeGeneratorAgent passed.")
 
     asyncio.run(main_tests())

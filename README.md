@@ -1,14 +1,30 @@
-# OpenAlpha_Evolve: Regenerating Autonomous Algorithmic Discovery 🚀
+# OpenAlpha_Evolve: Contribute to Improve this Project
 
 ![openalpha_evolve_workflow](https://github.com/user-attachments/assets/9d4709ad-0072-44ae-bbb5-7eea1c5fa08c)
 
-OpenAlpha_Evolve is an open-source Python framework inspired by the groundbreaking research on autonomous coding agents like DeepMind's AlphaEvolve. It's a **regeneration** of the core idea: an intelligent system that iteratively writes, tests, and improves code using Large Language Models (LLMs) like Google's Gemini, guided by the principles of evolution.
+OpenAlpha_Evolve is an open-source Python framework inspired by the groundbreaking research on autonomous coding agents like DeepMind's AlphaEvolve. It's a **regeneration** of the core idea: an intelligent system that iteratively writes, tests, and improves code using Large Language Models (LLMs) via LiteLLM, guided by the principles of evolution.
 
 Our mission is to provide an accessible, understandable, and extensible platform for researchers, developers, and enthusiasts to explore the fascinating intersection of AI, code generation, and automated problem-solving.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 
+## Table of Contents
+- [✨ The Vision: AI-Driven Algorithmic Innovation](#-the-vision-ai-driven-algorithmic-innovation)
+- [🧠 How It Works: The Evolutionary Cycle](#-how-it-works-the-evolutionary-cycle)
+- [🚀 Key Features](#-key-features)
+- [📂 Project Structure](#-project-structure)
+- [🏁 Getting Started](#-getting-started)
+- [💡 Defining Your Own Algorithmic Quests!](#-defining-your-own-algorithmic-quests)
+- [🔮 The Horizon: Future Evolution](#-the-horizon-future-evolution)
+- [🤝 Join the Evolution: Contributing](#-join-the-evolution-contributing)
+- [📜 License](#-license)
+- [🙏 Homage](#-homage)
+
 ---
+![image](https://github.com/user-attachments/assets/ff498bb7-5608-46ca-9357-fd9b55b76800)
+![image](https://github.com/user-attachments/assets/c1b4184a-f5d5-43fd-8f50-3e729c104e11)
+
+
 
 ## ✨ The Vision: AI-Driven Algorithmic Innovation
 
@@ -50,11 +66,11 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
 
 ## 🚀 Key Features
 
-*   **LLM-Powered Code Generation**: Leverages state-of-the-art Large Language Models (Google Gemini integration included).
-*   **Evolutionary Algorithm Core**: Implements iterative improvement through selection, LLM-driven mutation/bug-fixing (via diffs), and survival.
+*   **LLM-Powered Code Generation**: Leverages state-of-the-art Large Language Models via LiteLLM, supporting multiple providers (OpenAI, Anthropic, Google, etc.).
+*   **Evolutionary Algorithm Core**: Implements iterative improvement through selection, LLM-driven mutation/bug-fixing using diffs, and survival.
 *   **Modular Agent Architecture**: Easily extend or replace individual components (e.g., use a different LLM, database, or evaluation strategy).
-*   **Automated Program Evaluation**: Syntax checking and functional testing against user-provided examples with timeout mechanisms.
-*   **Configuration Management**: Easily tweak parameters like population size, number of generations, LLM models, and API settings via `config/settings.py`.
+*   **Automated Program Evaluation**: Syntax checking and functional testing against user-provided examples. Code execution is sandboxed using **Docker containers** for improved security and dependency management, with configurable timeout mechanisms.
+*   **Configuration Management**: Easily tweak parameters like population size, number of generations, LLM models, API settings, and Docker configurations via `config/settings.py` and `.env`.
 *   **Detailed Logging**: Comprehensive logs provide insights into each step of the evolutionary process.
 *   **Diff-based Mutations**: The system is designed to use diffs for mutations and bug fixes, allowing for more targeted code modifications by the LLM.
 *   **Open Source & Extensible**: Built with Python, designed for experimentation and community contributions.
@@ -65,26 +81,26 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
 
 ```text
 ./
-├── agents/                  # Core intelligent agents (subdirectories for each)
-│   ├── code_generator/
-│   ├── database_agent/
-│   ├── evaluator_agent/
-│   ├── prompt_designer/
-│   ├── selection_controller/
-│   ├── task_manager/
-│   ├── rl_finetuner/      # Placeholder for Reinforcement Learning Fine-Tuner
-│   └── monitoring_agent/  # Placeholder for Monitoring Agent
-├── config/                  # Configuration files (settings.py)
-├── core/                    # Core interfaces, data models (Program, TaskDefinition)
-├── utils/                   # Utility functions (if any, currently minimal)
-├── tests/                   # Unit and integration tests (placeholders, to be expanded)
-├── scripts/                 # Helper scripts (e.g., diagram generation)
-├── main.py                  # Main entry point to run the system
-├── requirements.txt         # Project dependencies
-├── .env.example             # Example for environment variables (copy to .env)
-├── .gitignore               # Specifies intentionally untracked files that Git should ignore
-├── LICENSE.md               # Project's license information (MIT License)
-└── README.md                # This file!
+├── agents/                  # Contains the core intelligent agents responsible for different parts of the evolutionary process. Each agent is in its own subdirectory.
+│   ├── code_generator/      # Agent responsible for generating code using LLMs.
+│   ├── database_agent/      # Agent for managing the storage and retrieval of programs and their metadata.
+│   ├── evaluator_agent/     # Agent that evaluates the generated code for syntax, execution, and fitness.
+│   ├── prompt_designer/     # Agent that crafts prompts for the LLM for initial generation, mutation, and bug fixing.
+│   ├── selection_controller/  # Agent that implements the selection strategy for parent and survivor programs.
+│   ├── task_manager/        # Agent that orchestrates the overall evolutionary loop and coordinates other agents.
+│   ├── rl_finetuner/        # Placeholder for a future Reinforcement Learning Fine-Tuner agent to optimize prompts.
+│   └── monitoring_agent/    # Placeholder for a future Monitoring Agent to track and visualize the process.
+├── config/                  # Holds configuration files, primarily `settings.py` for system parameters and API keys.
+├── core/                    # Defines core data structures and interfaces, like `Program` and `TaskDefinition`.
+├── utils/                   # Contains utility functions and helper classes used across the project (currently minimal).
+├── tests/                   # Includes unit and integration tests to ensure code quality and correctness (placeholders, to be expanded).
+├── scripts/                 # Stores helper scripts for various tasks, such as generating diagrams or reports.
+├── main.py                  # The main entry point to run the OpenAlpha_Evolve system and start an evolutionary run.
+├── requirements.txt         # Lists all Python package dependencies required to run the project.
+├── .env.example             # An example file showing the environment variables needed, such as API keys. Copy this to `.env` and fill in your values.
+├── .gitignore               # Specifies intentionally untracked files that Git should ignore (e.g., `.env`, `__pycache__/`).
+├── LICENSE.md               # Contains the full text of the MIT License under which the project is distributed.
+└── README.md                # This file! Provides an overview of the project, setup instructions, and documentation.
 ```
 
 ---
@@ -95,6 +111,7 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
     *   Python 3.10+
     *   `pip` for package management
     *   `git` for cloning
+    *   **Docker**: For sandboxed code evaluation. Ensure Docker Desktop (Windows/Mac) or Docker Engine (Linux) is installed and running. Visit [docker.com](https://www.docker.com/get-started) for installation instructions.
 
 2.  **Clone the Repository**:
     ```bash
@@ -113,25 +130,19 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
     pip install -r requirements.txt
     ```
 
-5.  **Set Up Environment Variables (Crucial for API Key)**:
-    *   Copy `.env_example` to a new file named `.env` in the project root:
+5.  **Set Up Environment Variables (Crucial for API Keys)**:
+    *   **This step is essential for the application to function correctly with your API keys.** The `.env` file stores your sensitive credentials and configuration, overriding the default placeholders in `config/settings.py`.
+    *   Create your personal environment file by copying the example:
         ```bash
         cp .env_example .env
         ```
-    *   **Edit the `.env` file** and add your `GEMINI_API_KEY`:
-        ```env
-        GEMINI_API_KEY="YOUR_ACTUAL_GEMINI_API_KEY_HERE"
-        ```
-        *You can obtain your API key from [Google AI Studio](https://aistudio.google.com/app/apikey).*
-    *   The system will prioritize the key from the `.env` file. If it's not found, it will use a non-functional placeholder from `config/settings.py` and print a warning. **Ensure your `.env` file is correctly set up.**
 
-6.  **Review Configuration (Optional)**:
-    *   Open `config/settings.py`. Here you can:
-        *   Change the default LLM models used for generation (`GEMINI_PRO_MODEL_NAME`) and evaluation (`GEMINI_EVALUATION_MODEL`).
-        *   Adjust evolutionary parameters like `POPULATION_SIZE` and `GENERATIONS`.
-        *   Modify API retry settings or logging levels.
 
-7.  **Run OpenAlpha_Evolve!**
+### LLM Configuration
+
+
+
+8.  **Run OpenAlpha_Evolve!**
     The `main.py` file is configured with an example task (Dijkstra's algorithm). To run it:
     ```bash
     python -m main
@@ -139,7 +150,7 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
     Watch the logs in your terminal to see the evolutionary process unfold! Log files are also saved to `alpha_evolve.log` (by default).
 
 8.  **Launch the Gradio Web Interface**
-    You can also interact with the system through the web UI. To start the Gradio app:
+    Interact with the system via the web UI. To start the Gradio app:
     ```bash
     python app.py
     ```
@@ -151,38 +162,71 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
 
 Want to challenge OpenAlpha_Evolve with a new problem? It's easy:
 
-1.  **Open `main.py`**.
-2.  **Modify the `TaskDefinition` object**:
-    *   `id`: A unique string identifier for your task (e.g., "sort_list_task").
+1.  **Open `main.py`** (or your custom script where you define tasks).
+2.  **Modify or create a `TaskDefinition` object**:
+    *   `id`: A unique string identifier for your task (e.g., "sort_list_task", "find_max_with_bound_task").
     *   `description`: A clear, detailed natural language description of the problem. This is crucial for the LLM to understand what to do. Be specific about function names, expected behavior, and constraints.
-    *   `function_name_to_evolve`: The name of the Python function the agent should try to create/evolve (e.g., "custom_sort").
-    *   `input_output_examples`: A list of dictionaries, each containing an `input` (arguments for your function) and the corresponding expected `output`. These are vital for evaluation.
-        *   Inputs should be provided as a list if the function takes multiple positional arguments, or as a single value if it takes one.
-        *   Use `float('inf')` or `float('-inf')` directly in your Python code defining these examples if needed by your problem (the evaluation harness handles JSON serialization/deserialization of these).
+    *   `function_name_to_evolve`: The name of the Python function the agent should try to create/evolve (e.g., "custom_sort", "find_max_above_threshold").
+    *   `input_output_examples`: A list of dictionaries, each containing an `input` and the corresponding expected `output`. These are vital for evaluation.
+        *   The `input` field for each example should be a list, where each element of the list corresponds to an argument for your function. If your function takes a single argument, this will be a list containing that one argument. For functions with multiple arguments, the list will contain all arguments in the correct order (e.g., `input=[[1, 2, 3], 0]` for a function `my_func(list_arg, threshold_arg)`).
+        *   For numerical problems requiring positive or negative infinity, you can use `float('inf')` or `float('-inf')` directly in your Python code when defining these examples. The system's evaluation harness is designed to correctly serialize and deserialize these special float values. See the example below.
     *   `allowed_imports`: Specify a list of Python standard libraries that the generated code is allowed to import (e.g., `["heapq", "math", "sys"]`). This helps guide the LLM and can be important for the execution sandbox.
     *   (Optional) `evaluation_criteria`: Define how success is measured (currently primarily driven by correctness based on test cases).
     *   (Optional) `initial_code_prompt`: Override the default initial prompt if you need more specific instructions for the first code generation attempt.
 
-3.  **Run the agent** as before: `python -m main`.
+3.  **Run the agent** with your new or modified task definition.
 
 The quality of your `description` and the comprehensiveness of your `input_output_examples` significantly impact the agent's success!
+
+### Example: TaskDefinition with `float('inf')`
+
+Here's a conceptual example of how you might define a task that requires the use of `float('-inf')` as an initial comparison point for finding a maximum value within a certain range.
+
+```python
+from core.task_definition import TaskDefinition
+
+find_max_task = TaskDefinition(
+    id="find_max_in_list_with_lower_bound",
+    description="Write a Python function called 'find_max_with_bound' that takes a list of numbers and a lower bound. "
+                "The function should return the largest number in the list that is greater than or equal to the lower bound. "
+                "If no such number exists, it should return float('-inf').",
+    function_name_to_evolve="find_max_with_bound",
+    input_output_examples=[
+        {"input": [[1, 5, 2, 8, 3, 10], 3], "output": 10},
+        {"input": [[-1, -5, -2, -8], 0], "output": float('-inf')},
+        {"input": [[10, 20, 30], 10], "output": 30},
+        {"input": [[5, 15, 25], 30], "output": float('-inf')},
+        {"input": [[4, 8, 2], float('-inf')], "output": 8}, # Using -inf as a bound
+        {"input": [[], 5], "output": float('-inf')}, # Empty list case
+    ],
+    allowed_imports=["math"] # Allow 'math' if needed, though float('-inf') is built-in
+)
+
+# To use this task, you would pass `find_max_task` to the TaskManagerAgent.
+# Note: float('inf') and float('-inf') are used directly in the Python list.
+# The system will handle their JSON serialization/deserialization during evaluation.
+```
+
+### Best Practices for Task Definition
+
+Crafting effective task definitions is key to guiding OpenAlpha_Evolve successfully. Consider these tips:
+
+*   **Be Clear and Unambiguous**: Write task descriptions as if you're explaining the problem to another developer. Avoid jargon where possible, or explain it clearly. The more precise your language, the better the LLM can interpret your intent.
+*   **Provide Diverse and Comprehensive Examples**: Your `input_output_examples` are the primary way the agent verifies its generated code.
+    *   Include typical use cases.
+    *   Cover edge cases (e.g., empty lists, zero values, very large or small numbers, `None` inputs if applicable).
+    *   Include examples that test different logical paths in the expected solution.
+    *   Ensure the outputs are correct for each input.
+*   **Start Simple, Then Increase Complexity**: If you have a complex problem, consider breaking it down or starting with a simpler version. Once the agent can solve the simpler task, you can gradually add more constraints or features to the description and examples. This iterative approach can be more effective than starting with a highly complex definition.
+*   **Specify Constraints and Edge Cases in the Description**: Don't rely solely on examples to convey all requirements. If there are specific constraints (e.g., "the input list will always contain positive integers," "the function should handle lists up to 10,000 elements efficiently") or known edge cases that need special handling, mention them explicitly in the `description`.
+*   **Define Expected Function Signature**: Clearly state the expected function name (`function_name_to_evolve`) and the nature of its parameters in the `description`. This helps the LLM generate code that matches your evaluation setup.
+*   **Iterate and Refine**: Your first task definition might not be perfect. If the agent struggles or produces incorrect solutions, review your description and examples. Are they clear? Are there any ambiguities? Could more examples help? Iteratively refine your task definition based on the agent's performance.
 
 ---
 
 ## 🔮 The Horizon: Future Evolution
 
-OpenAlpha_Evolve is a living project. Here are some directions we're excited to explore (and invite contributions for!):
 
-*   **Advanced Evaluation Sandboxing**: Implementing more robust, secure sandboxing (e.g., using Docker or `nsjail`) for code execution to handle potentially unsafe code and complex dependencies.
-*   **Sophisticated Fitness Metrics**: Beyond correctness and basic runtime, incorporating checks for code complexity (e.g., cyclomatic complexity), style (linting), resource usage (memory), and custom domain-specific metrics.
-*   **Reinforcement Learning for Prompt Strategy**: Implementing the `RLFineTunerAgent` to dynamically optimize prompt engineering strategies based on performance feedback.
-*   **Enhanced Monitoring & Visualization**: Developing tools (via `MonitoringAgent`) to visualize the evolutionary process, track fitness landscapes, and understand agent behavior (e.g., using a simple web dashboard or plots).
-*   **Broader LLM Support**: Adding easy integrations for other powerful LLMs (e.g., OpenAI models, Anthropic Claude).
-*   **Self-Correction & Reflection**: Enabling the agent to analyze its own failures more deeply (e.g., analyze error messages, identify patterns in failed tests) and refine its problem-solving approach.
-*   **Diverse Task Domains**: Applying OpenAlpha_Evolve to a wider range of problems in science, engineering, data analysis, and creative coding.
-*   **Community-Driven Task Library**: Building a collection of interesting and challenging tasks contributed by the community.
-*   **Improved Diff Application**: Making the diff application more robust or exploring alternative ways for the LLM to suggest modifications.
-*   **Crossover Implementation**: Adding a genetic crossover mechanism as an alternative or supplement to LLM-driven mutation.
 
 ---
 

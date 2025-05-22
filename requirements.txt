@@ -1,8 +1,6 @@
 # Core Libraries
-openai  # For openai compatible LLMs
-# langchain
-# langchain-google-genai # Or similar for Gemini integration
-python-dotenv # For managing environment variables
+litellm
+python-dotenv>=1.0.0
 
 # LLM Models & Frameworks
 # transformers
@@ -31,7 +29,10 @@ python-dotenv # For managing environment variables
 # Utilities
 # jinja2
 
-# API/Web
-gradio>=3.40.0  # Web interface for OpenAlpha_Evolve
+# API/Web (Optional, if exposing functionality)
 # fastapi
-# uvicorn 
+# uvicorn
+
+asyncio>=3.4.3
+uuid>=1.30
+gradio>=4.0.0

@@ -1,18 +1,16 @@
-# Evaluator Agent 
-import time
-import logging
-import traceback
-import subprocess
-import tempfile
-import os
-import ast
-import json
+                  
 import asyncio
+import json
+import logging
+import math
+import os
 import sys
-from typing import Optional, Dict, Any, Tuple, Union, List
+import tempfile
+import time
+from typing import Optional, Dict, Any, Tuple, List
 
-from core.interfaces import EvaluatorAgentInterface, Program, TaskDefinition, BaseAgent
 from config import settings
+from core.interfaces import EvaluatorAgentInterface, Program, TaskDefinition, BaseAgent
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +18,7 @@ class EvaluatorAgent(EvaluatorAgentInterface, BaseAgent):
     def __init__(self, task_definition: Optional[TaskDefinition] = None):
         super().__init__()
         self.task_definition = task_definition
-        self.evaluation_model_name = settings.EVALUATION_KEY
+        self.evaluation_model_name = settings.EVALUATION_MODEL
         self.evaluation_timeout_seconds = settings.EVALUATION_TIMEOUT_SECONDS
         logger.info(f"EvaluatorAgent initialized with model: {self.evaluation_model_name}, timeout: {self.evaluation_timeout_seconds}s")
         if self.task_definition:
@@ -29,7 +27,7 @@ class EvaluatorAgent(EvaluatorAgentInterface, BaseAgent):
     def _check_syntax(self, code: str) -> List[str]:
         errors = []
         try:
-            ast.parse(code)
+            compile(code+"\n", "tmp.py", 'exec')
         except SyntaxError as e:
             errors.append(f"SyntaxError: {e.msg} at line {e.lineno}, offset {e.offset}")
         except Exception as e:
@@ -61,10 +59,12 @@ class EvaluatorAgent(EvaluatorAgentInterface, BaseAgent):
                 return f"float('{str(arg)}')"
             return json.dumps(arg)
 
-        # Convert input_output_examples to a string with proper Python values for Infinity
+                                                                                          
         test_cases_str = json.dumps(task_for_examples.input_output_examples)
         test_cases_str = test_cases_str.replace('"Infinity"', 'float("inf")')
         test_cases_str = test_cases_str.replace('"NaN"', 'float("nan")')
+                                                                      
+        test_cases_str = test_cases_str.replace('true', 'True').replace('false', 'False').replace('null', 'None')
 
         test_harness_code = f"""
 import json
@@ -160,33 +160,65 @@ print(json.dumps(final_output, default=custom_json_serializer))
         with open(temp_file_path, "w") as f:
             f.write(test_harness_code)
 
-        cmd = [sys.executable, temp_file_path]
+        # Generate a unique container name to manage it during timeouts
+        container_name = f"evaluator-{task_for_examples.id}-{time.time_ns()}"
         
+        # Docker command construction
+        cmd = [
+            "docker", "run",
+            "--rm",
+            "--name", container_name,
+            "-i",
+            # Conditionally disable network
+            # "-v", f"{os.path.abspath(temp_dir)}:/app/user_code", # Ensure absolute path for temp_dir # This line will be part of the dynamic extension below
+            "-w", "/app/user_code",
+            # settings.DOCKER_IMAGE_NAME, # This line will be part of the dynamic extension below
+            # "python", "temp_script.py" # This line will be part of the dynamic extension below
+        ]
+
+        if settings.DOCKER_NETWORK_DISABLED:
+            cmd.extend(["--network", "none"])
+        
+        # Add volume mount, image name, and script execution command
+        cmd.extend([
+            "-v", f"{os.path.abspath(temp_dir)}:/app/user_code",
+            settings.DOCKER_IMAGE_NAME,
+            "python", "temp_script.py"
+        ])
+
         proc = None
         try:
-            logger.debug(f"Executing code: {' '.join(cmd)} in {temp_dir}")
+            logger.debug(f"Executing code in Docker: {' '.join(cmd)}")
             start_time = time.monotonic()
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=temp_dir
+                stderr=asyncio.subprocess.PIPE
             )
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
             duration = time.monotonic() - start_time
-            logger.debug(f"Code execution finished in {duration:.2f}s. Exit code: {proc.returncode}")
+            logger.debug(f"Docker execution finished in {duration:.2f}s. Exit code: {proc.returncode}")
 
             stdout_str = stdout.decode('utf-8', errors='replace').strip()
             stderr_str = stderr.decode('utf-8', errors='replace').strip()
 
             if proc.returncode != 0:
-                error_message = f"Execution failed with exit code {proc.returncode}. Stdout: '{stdout_str}'. Stderr: '{stderr_str}'"
-                logger.warning(error_message)
-                return None, error_message
-            
-            if not stdout_str:
-                 logger.warning(f"Execution produced no stdout. Stderr: '{stderr_str}'")
+                # If stdout is empty and stderr has content, it's likely a Docker/script init error
+                if not stdout_str and stderr_str:
+                    error_message = f"Execution failed with exit code {proc.returncode}. Docker error: '{stderr_str}'"
+                    logger.warning(error_message)
+                    return None, error_message
+                # If stdout has content, it might be a script error with traceback in stderr, but JSON in stdout.
+                # Log a warning and proceed to parse stdout. If parsing fails, that error will be returned.
+                logger.warning(f"Execution completed with non-zero exit code {proc.returncode}. Stdout: '{stdout_str}', Stderr: '{stderr_str}'. Attempting to parse stdout.")
+
+            if not stdout_str and proc.returncode == 0: # Script exited cleanly but no output
+                 logger.warning(f"Execution produced no stdout, but exited cleanly. Stderr: '{stderr_str}'")
                  return None, f"No output from script. Stderr: '{stderr_str}'"
+            
+            if not stdout_str and proc.returncode != 0: # No stdout and non-zero exit, means previous error message should be used
+                 return None, f"Execution failed with exit code {proc.returncode}. No stdout. Stderr: '{stderr_str}'"
+
 
             try:
                 def json_loads_with_infinity(s):
@@ -208,16 +240,38 @@ print(json.dumps(final_output, default=custom_json_serializer))
                 return None, error_message
 
         except asyncio.TimeoutError:
-            if proc:
+            logger.warning(f"Execution for container '{container_name}' initiating timeout handling.")
+            if proc and proc.returncode is None: # Check if process is still running
+                logger.info(f"Attempting to stop Docker container: {container_name}")
+                stop_cmd = ["docker", "stop", container_name]
                 try:
-                    proc.kill()
-                    await proc.wait()
-                except ProcessLookupError:
-                    pass
-                except Exception as e_kill:
-                    logger.error(f"Error trying to kill timed-out process: {e_kill}")
-            logger.warning(f"Code execution timed out after {timeout} seconds for function {task_for_examples.function_name_to_evolve}.")
-            return None, f"Execution timed out after {timeout} seconds."
+                    stop_proc = await asyncio.create_subprocess_exec(*stop_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                    _, stop_stderr_bytes = await asyncio.wait_for(stop_proc.communicate(), timeout=10) # 10s for docker stop
+                    if stop_proc.returncode != 0:
+                        logger.error(f"Failed to stop container {container_name}. Exit: {stop_proc.returncode}. Stderr: {stop_stderr_bytes.decode(errors='replace')}")
+                        kill_cmd = ["docker", "kill", container_name]
+                        kill_proc = await asyncio.create_subprocess_exec(*kill_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                        kill_stdout_bytes, kill_stderr_bytes = await asyncio.wait_for(kill_proc.communicate(), timeout=5) # 5s for docker kill
+                        if kill_proc.returncode == 0:
+                             logger.info(f"Successfully killed container {container_name} after stop failed.")
+                        else:
+                             logger.error(f"Failed to kill container {container_name}. Exit: {kill_proc.returncode}. Stderr: {kill_stderr_bytes.decode(errors='replace')}")
+                    else:
+                        logger.info(f"Successfully stopped container {container_name}.")
+                except asyncio.TimeoutError:
+                    logger.error(f"Timeout trying to stop/kill container {container_name}. It might be orphaned.")
+                except Exception as e_stop:
+                    logger.error(f"Error stopping/killing container {container_name}: {e_stop}")
+            
+            if proc: # Original docker run process
+                try:
+                    if proc.returncode is None: proc.kill()
+                    await proc.wait() 
+                except ProcessLookupError: pass
+                except Exception as e_kill: logger.error(f"Error trying to kill original subprocess after docker stop/kill: {e_kill}")
+            
+            logger.warning(f"Code execution in Docker container '{container_name}' timed out after {timeout} seconds.")
+            return None, f"Execution timed out after {timeout} seconds (container {container_name})."
         except Exception as e:
             logger.error(f"An unexpected error occurred during code execution: {e}", exc_info=True)
             return None, f"Unexpected execution error: {str(e)}"
@@ -226,8 +280,21 @@ print(json.dumps(final_output, default=custom_json_serializer))
                 if os.path.exists(temp_file_path):
                     os.remove(temp_file_path)
                 if os.path.exists(temp_dir):
-                    os.rmdir(temp_dir)
-            except Exception as e_cleanup:
+                    try:
+                        # Attempt to remove the directory multiple times with a small delay
+                        # This is a workaround for potential lingering locks from Docker
+                        for _ in range(3):
+                            try:
+                                if os.path.exists(temp_file_path): os.remove(temp_file_path)
+                                os.rmdir(temp_dir)
+                                break # Succeeded
+                            except OSError:
+                                await asyncio.sleep(0.1) # Wait a bit and retry
+                        else:
+                            logger.error(f"Failed to remove temp_dir {temp_dir} after multiple retries.")
+                    except Exception as e_rmdir: # Catch any other exception during rmdir attempts
+                         logger.error(f"Error removing temp_dir {temp_dir}: {e_rmdir}.")
+            except Exception as e_cleanup: # General cleanup exception
                 logger.error(f"Error during cleanup of temp files: {e_cleanup}")
 
     def _assess_correctness(self, execution_results: Dict[str, Any], expected_outputs: List[Dict[str, Any]]) -> Tuple[float, int, int]:
@@ -250,7 +317,7 @@ print(json.dumps(final_output, default=custom_json_serializer))
                 actual = actual_output_detail.get("output")
                 expected_val = expected["output"]
                 
-                if actual == expected_val:
+                if self._compare_outputs(actual, expected_val):
                     passed_tests += 1
                 else:
                     logger.debug(f"Test case {i} failed: Expected '{expected_val}', Got '{actual}'")
@@ -287,31 +354,68 @@ print(json.dumps(final_output, default=custom_json_serializer))
             
             if execution_error:
                 logger.warning(f"Execution error for program {program.id}: {execution_error}")
-                program.errors.append(f"Execution Error: {execution_error}")
-                program.fitness_scores["correctness"] = 0.0
-                program.status = "failed_evaluation"
-                return program
+                if f"Execution Error: {execution_error}" not in program.errors:
+                    program.errors.append(f"Execution Error: {execution_error}")
+            
+            if execution_results is None and not execution_error: # Should ideally not happen if error reporting is robust
+                 if "Execution Error: No results returned and no specific error message." not in program.errors:
+                    program.errors.append("Execution Error: No results returned and no specific error message.")
 
             logger.debug(f"Execution results for program {program.id}: {execution_results}")
             
-            correctness, passed_tests, total_tests = self._assess_correctness(execution_results, task.input_output_examples)
+            num_expected_tests = len(task.input_output_examples) if task.input_output_examples else 0
+            if execution_results: # Only assess if we have results
+                correctness, passed_tests, total_tests = self._assess_correctness(execution_results, task.input_output_examples)
+                # total_tests from _assess_correctness is based on len(task.input_output_examples)
+            else: # No results, implies full failure for correctness calculation
+                correctness, passed_tests, total_tests = 0.0, 0, num_expected_tests
+            
             program.fitness_scores["correctness"] = correctness
             program.fitness_scores["passed_tests"] = float(passed_tests)
-            program.fitness_scores["total_tests"] = float(total_tests)
-            logger.info(f"Program {program.id} correctness: {correctness} ({passed_tests}/{total_tests} tests passed)")
-
-            if correctness < 1.0:
-                 program.errors.append(f"Failed {total_tests - passed_tests} out of {total_tests} test cases.")
-        else:
-            logger.info(f"No input/output examples provided for task {task.id}. Skipping execution-based correctness check for program {program.id}.")
-            program.fitness_scores["correctness"] = 0.5
-            program.status = "evaluated"
-
-        if not program.errors:
-            program.status = "evaluated"
-        else:
-            program.status = "failed_evaluation"
+            program.fitness_scores["total_tests"] = float(total_tests) # This should be num_expected_tests
             
+            average_runtime = execution_results.get("average_runtime_ms") if execution_results else float('inf')
+            program.fitness_scores["runtime_ms"] = average_runtime
+            
+            logger.info(f"Program {program.id} correctness: {correctness:.2f} ({passed_tests}/{total_tests} tests passed), Avg Runtime: {average_runtime}ms")
+
+            if correctness < 1.0 and total_tests > 0:
+                error_msg = f"Failed {total_tests - passed_tests} out of {total_tests} test cases."
+                # Add this error only if a more specific execution error isn't already the primary one
+                if not program.errors or "Execution Error" not in program.errors[0]:
+                    if error_msg not in program.errors:
+                        program.errors.append(error_msg)
+            elif total_tests == 0 and program.fitness_scores["correctness"] < 1.0 : # E.g. if correctness was set to 0.5 due to no tests
+                 pass # No specific test failure error to add
+
+            # Final status determination
+            if program.errors:
+                program.status = "failed_evaluation"
+            elif correctness == 1.0:
+                program.status = "evaluated"
+            else: # Not 1.0 correctness, but no specific "errors" like exceptions
+                program.status = "failed_evaluation"
+                if not program.errors and total_tests > 0 : # Add generic test failure if no other error recorded
+                     program.errors.append(f"Achieved {correctness*100:.0f}% correctness but not all tests passed.")
+
+
+            return program
+        else: # No input_output_examples
+            logger.info(f"No input/output examples provided for task {task.id}. Skipping execution-based correctness check for program {program.id}.")
+            program.fitness_scores["correctness"] = 0.5 # Default score if no tests
+            program.fitness_scores["runtime_ms"] = 0.0
+            program.status = "evaluated" # No tests to fail
+
+        # This part is largely unreachable due to returns within the if/else block, but as a safeguard:
+        if not program.errors and program.status != "evaluated":
+             # If no errors but not marked evaluated (e.g. partial correctness), ensure it's failed_evaluation
+             if program.fitness_scores.get("correctness", 0.0) < 1.0:
+                program.status = "failed_evaluation"
+             else:
+                program.status = "evaluated" # Should be redundant
+        elif program.errors:
+            program.status = "failed_evaluation"
+        
         logger.info(f"Evaluation complete for program {program.id}. Status: {program.status}, Fitness: {program.fitness_scores}")
         return program
 
@@ -319,13 +423,23 @@ print(json.dumps(final_output, default=custom_json_serializer))
         return await self.evaluate_program(program, task)
 
     def _compare_outputs(self, actual: Any, expected: Any) -> bool:
-        logger.debug(f"Comparing outputs. Actual: {actual}, Expected: {expected}")
-        # ... (rest of the _compare_outputs logic from your version)
-        return actual == expected
+        logger.debug(f"Comparing outputs. Actual: {type(actual)}{actual}, Expected: {type(expected)}{expected}")
+        
+        if isinstance(actual, float) and isinstance(expected, float):
+            TOLERANCE = 1e-9 # This could also be made configurable via settings.py later.
+            is_close = math.isclose(actual, expected, rel_tol=TOLERANCE, abs_tol=TOLERANCE)
+            if not is_close:
+                logger.debug(f"Float comparison: {actual} vs {expected} is NOT close (tolerance: {TOLERANCE}).")
+            return is_close
+        
+        # Fallback to direct equality for other types
+        are_equal = actual == expected
 
-# Removed the old __main__ block from this file, 
-# as TaskManagerAgent should be the entry point for full runs.
-# The more detailed __main__ from your version of EvaluatorAgent was good for unit testing it.
-# For now, I am removing it to keep the agent file clean.
-# If you need to unit test EvaluatorAgent specifically, 
-# we can re-add a similar main block or create separate test files. 
+        return are_equal
+
+                                                 
+                                                              
+                                                                                              
+                                                         
+                                                        
+                                                                    

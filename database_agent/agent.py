@@ -1,4 +1,4 @@
-# Database Agent 
+                 
 import logging
 from typing import List, Dict, Any, Optional, Literal
 import uuid
@@ -8,7 +8,7 @@ from core.interfaces import (
     Program,
     BaseAgent,
 )
-# from config import settings # Settings not used in this agent
+                                                               
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class InMemoryDatabaseAgent(DatabaseAgentInterface, BaseAgent):
     async def save_program(self, program: Program) -> None:
         logger.info(f"Saving program: {program.id} (Generation: {program.generation}) to in-memory database.")
         if program.id in self._programs:
-            logger.warning(f"Program with ID {program.id} already exists. It will be overwritten.")
+            logger.warning(f"Program with ID {program.id} already exists (expected during evolution/migration). It will be overwritten.")
         self._programs[program.id] = program
         logger.debug(f"Program {program.id} data: {program}")
 
@@ -52,9 +52,9 @@ class InMemoryDatabaseAgent(DatabaseAgentInterface, BaseAgent):
             return []
 
         all_progs = list(self._programs.values())
-        # Placeholder: If programs were associated with task_ids, filter here:
-        # relevant_progs = [p for p in all_progs if p.task_id == task_id] # Assuming Program has a task_id field
-        # For now, using all_progs as task_id is not stored/filtered on Program objects in this simple DB.
+                                                                              
+                                                                                                                
+                                                                                                          
         relevant_progs = all_progs
 
         def sort_key(p: Program):
@@ -62,33 +62,28 @@ class InMemoryDatabaseAgent(DatabaseAgentInterface, BaseAgent):
                 return p.fitness_scores.get("correctness", -1.0)
             elif objective == "runtime_ms":
                 val = p.fitness_scores.get("runtime_ms", float('inf'))
-                # For runtime_ms, if sort_order is 'desc', we want higher values first (worse runtimes).
-                # If sort_order is 'asc', we want lower values first (better runtimes).
-                # The key should return a value that, when sorted in ascending order by default by `sorted`,
-                # achieves the desired `sort_order`.
-                # So if we want descending, the key should be negated for numeric types.
                 return -val if sort_order == "desc" else val 
-            return 0 # Should not happen with Literal types
+            return 0                                       
 
-        # Determine reverse for sorted() based on objective and sort_order
-        if objective == "correctness": # Higher correctness is better
+                                                                          
+        if objective == "correctness":                               
             effective_reverse = (sort_order == "desc")
-        elif objective == "runtime_ms": # Lower runtime_ms is better
-            effective_reverse = (sort_order == "asc") # sort ascending for runtime means reverse=False
+        elif objective == "runtime_ms":                             
+            effective_reverse = (sort_order == "asc")                                                 
         else:
-            effective_reverse = False # Default
+            effective_reverse = False          
         
-        # Corrected sorting logic based on objective and sort_order
+                                                                   
         if objective == "runtime_ms":
-            # Ascending runtime_ms (better) means reverse=False for sorted()
-            # Descending runtime_ms (worse) means reverse=True for sorted()
+                                                                            
+                                                                           
             sorted_programs = sorted(relevant_progs, key=lambda p: p.fitness_scores.get("runtime_ms", float('inf')), reverse=(sort_order == "desc"))
         elif objective == "correctness":
-            # Ascending correctness (worse) means reverse=False
-            # Descending correctness (better) means reverse=True
+                                                               
+                                                                
             sorted_programs = sorted(relevant_progs, key=lambda p: p.fitness_scores.get("correctness", -1.0), reverse=(sort_order == "desc"))
         else:
-            # Fallback, though Literal should prevent this.
+                                                           
             sorted_programs = sorted(relevant_progs, key=sort_key, reverse=effective_reverse)
 
         logger.debug(f"Sorted {len(sorted_programs)} programs. Top 3 (if available): {[p.id for p in sorted_programs[:3]]}")
@@ -130,9 +125,9 @@ class InMemoryDatabaseAgent(DatabaseAgentInterface, BaseAgent):
         logger.warning("InMemoryDatabaseAgent.execute() called, but this agent uses specific methods for DB operations.")
         raise NotImplementedError("InMemoryDatabaseAgent does not have a generic execute. Use specific methods like save_program, get_program etc.")
 
-# Example Usage (for testing purposes)
+                                      
 if __name__ == "__main__":
-    import asyncio # Make sure asyncio is imported for the test runner
+    import asyncio                                                    
     async def test_db():
         logging.basicConfig(level=logging.DEBUG)
         db = InMemoryDatabaseAgent()
@@ -154,29 +149,29 @@ if __name__ == "__main__":
         best_correctness = await db.get_best_programs(task_id="test_task", limit=2, objective="correctness", sort_order="desc")
         print(f"Best by correctness (desc): {[p.id for p in best_correctness]}")
         assert len(best_correctness) == 2
-        assert best_correctness[0].id == "prog_002" # 0.9
-        assert best_correctness[1].id == "prog_003" # 0.85
+        assert best_correctness[0].id == "prog_002"      
+        assert best_correctness[1].id == "prog_003"       
 
         best_runtime_asc = await db.get_best_programs(task_id="test_task", limit=2, objective="runtime_ms", sort_order="asc")
         print(f"Best by runtime (asc): {[p.id for p in best_runtime_asc]}")
         assert len(best_runtime_asc) == 2
-        assert best_runtime_asc[0].id == "prog_002" # 50ms
-        assert best_runtime_asc[1].id == "prog_003" # 70ms
+        assert best_runtime_asc[0].id == "prog_002"       
+        assert best_runtime_asc[1].id == "prog_003"       
         
         best_runtime_desc = await db.get_best_programs(task_id="test_task", limit=2, objective="runtime_ms", sort_order="desc")
         print(f"Best by runtime (desc): {[p.id for p in best_runtime_desc]}")
         assert len(best_runtime_desc) == 2
-        assert best_runtime_desc[0].id == "prog_001" # 100ms
-        assert best_runtime_desc[1].id == "prog_003" # 70ms
+        assert best_runtime_desc[0].id == "prog_001"        
+        assert best_runtime_desc[1].id == "prog_003"       
 
-        # Test get_programs_for_next_generation
+                                               
         next_gen_programs = await db.get_programs_for_next_generation(task_id="test_task", generation_size=2)
         print(f"Next gen programs (size 2): {[p.id for p in next_gen_programs]}")
         assert len(next_gen_programs) == 2
 
         next_gen_programs_all = await db.get_programs_for_next_generation(task_id="test_task", generation_size=5)
         print(f"Next gen programs (size 5, all): {[p.id for p in next_gen_programs_all]}")
-        assert len(next_gen_programs_all) == 3 # Since only 3 programs exist
+        assert len(next_gen_programs_all) == 3                              
 
         gen0_programs = await db.get_programs_by_generation(0)
         assert len(gen0_programs) == 2

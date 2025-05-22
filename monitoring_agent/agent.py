@@ -1,4 +1,4 @@
-# Monitoring Agent 
+                   
 import logging
 from typing import Dict, Any, Optional
 
@@ -12,19 +12,19 @@ class MonitoringAgent(MonitoringAgentInterface):
         logger.info("MonitoringAgent initialized (Placeholder).")
 
     async def log_metrics(self, metrics: Dict):
-        # In a real system, this would send metrics to a monitoring service (e.g., Prometheus, Grafana, W&B)
+                                                                                                            
         logger.info(f"Logged metrics (Placeholder): {metrics}")
-        # Example: self.metrics_client.gauge('population_avg_fitness', metrics.get('avg_fitness'))
+                                                                                                  
         pass
 
     async def report_status(self):
         status_report = {
             "system_status": "nominal (placeholder)",
-            "active_tasks": 1, # Example
-            "llm_calls_today": 100 # Example
+            "active_tasks": 1,          
+            "llm_calls_today": 100          
         }
         logger.info(f"System Status (Placeholder): {status_report}")
-        # This could send alerts or updates to a dashboard / Slack etc.
+                                                                       
         return status_report
 
     async def execute(self, action: str, metrics: Optional[Dict] = None) -> Any:
