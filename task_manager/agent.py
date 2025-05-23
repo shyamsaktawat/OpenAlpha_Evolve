@@ -57,12 +57,15 @@ class TaskManagerAgent(TaskManagerInterface):
         initial_population = []
         
         # Generate initial programs
+        tasks = []
         for i in range(self.population_size):
-            program_id = f"{self.task_definition.id}_gen0_prog{i}"
-            logger.debug(f"Generating initial program {i+1}/{self.population_size} with id {program_id}")
             initial_prompt = self.prompt_designer.design_initial_prompt()
-            generated_code = await self.code_generator.generate_code(initial_prompt, temperature=0.8)
-            
+            tasks.append(self.code_generator.generate_code(initial_prompt, temperature=0.8))
+
+        generated_codes = await asyncio.gather(*tasks)
+        for i, generated_code in enumerate(generated_codes):
+            program_id = f"{self.task_definition.id}_gen0_prog{i}"
+            logger.debug(f"Generated initial program {i+1}/{self.population_size} with id {program_id}")
             program = Program(
                 id=program_id,
                 code=generated_code,
