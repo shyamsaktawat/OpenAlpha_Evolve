@@ -375,6 +375,11 @@ print(json.dumps(final_output, default=custom_json_serializer))
             program.fitness_scores["total_tests"] = float(total_tests) # This should be num_expected_tests
             
             average_runtime = execution_results.get("average_runtime_ms") if execution_results else float('inf')
+            
+            # make sure average_runtime is a float
+            if not isinstance(average_runtime, float) and not isinstance(average_runtime, int):
+                average_runtime = float('inf')
+            
             program.fitness_scores["runtime_ms"] = average_runtime
             
             logger.info(f"Program {program.id} correctness: {correctness:.2f} ({passed_tests}/{total_tests} tests passed), Avg Runtime: {average_runtime}ms")
