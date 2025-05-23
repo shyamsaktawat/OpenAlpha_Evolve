@@ -39,6 +39,7 @@ Imagine an agent that can:
 OpenAlpha_Evolve is a step towards this vision. It's not just about generating code; it's about creating a system that *discovers* and *refines* solutions autonomously.
 
 ---
+<img width="1253" alt="Screenshot 2025-05-19 at 12 17 58 AM" src="https://github.com/user-attachments/assets/43d7c5a8-f361-438c-ac38-39717f28ee1f" />
 
 ## 🧠 How It Works: The Evolutionary Cycle
 
@@ -78,7 +79,7 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
 
 ## 📂 Project Structure
 
-```
+```text
 ./
 ├── agents/                  # Contains the core intelligent agents responsible for different parts of the evolutionary process. Each agent is in its own subdirectory.
 │   ├── code_generator/      # Agent responsible for generating code using LLMs.
@@ -133,7 +134,7 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
     *   **This step is essential for the application to function correctly with your API keys.** The `.env` file stores your sensitive credentials and configuration, overriding the default placeholders in `config/settings.py`.
     *   Create your personal environment file by copying the example:
         ```bash
-        cp .env.example .env
+        cp .env_example .env
         ```
 
 
