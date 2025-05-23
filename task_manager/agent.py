@@ -121,7 +121,7 @@ class TaskManagerAgent(TaskManagerInterface):
             generation_tasks = []
             for i, parent in enumerate(parents):
                 for j in range(num_offspring_per_parent):
-                    child_id = f"{self.task_definition.id}_gen{gen}_child{len(offspring_population)}"
+                    child_id = f"{self.task_definition.id}_gen{gen}_child{i}_{j}"
                     generation_tasks.append(self.generate_offspring(parent, gen, child_id))
             
             generated_offspring_results = await asyncio.gather(*generation_tasks, return_exceptions=True)
