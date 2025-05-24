@@ -23,7 +23,8 @@ class TaskDefinition:
     input_output_examples: Optional[List[Dict[str, Any]]] = None                                                    
     evaluation_criteria: Optional[Dict[str, Any]] = None                                                            
     initial_code_prompt: Optional[str] = "Provide an initial Python solution for the following problem:"
-    allowed_imports: Optional[List[str]] = None                                  
+    allowed_imports: Optional[List[str]] = None
+    tests: Optional[List[Dict[str, Any]]] = None
 
 class BaseAgent(ABC):
     """Base class for all agents."""

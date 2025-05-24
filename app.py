@@ -65,10 +65,6 @@ for module in ['task_manager.agent', 'code_generator.agent', 'evaluator_agent.ag
     logging.getLogger(module).setLevel(logging.DEBUG)
 
                          
-# Check if API key is set
-if settings.PRO_API_KEY.startswith("YOUR_API_KEY") or not settings.PRO_API_KEY:
-    print("Error: Please set your API key in the .env file")
-    sys.exit(1)
 
                                               
 current_results = []
