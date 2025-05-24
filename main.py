@@ -6,7 +6,8 @@ import asyncio
 import logging
 import sys
 import os
-
+import yaml
+import argparse
                                                
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 if project_root not in sys.path:
@@ -27,96 +28,65 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def load_task_from_yaml(yaml_path: str) -> tuple[list, str, str, str, list]:
+    """Load task configuration and test cases from a YAML file."""
+    try:
+        with open(yaml_path, 'r') as f:
+            data = yaml.safe_load(f)
+            # Get task configuration
+            task_id = data.get('task_id')
+            task_description = data.get('task_description')
+            function_name = data.get('function_name')
+            allowed_imports = data.get('allowed_imports', [])
+            
+            # Convert test cases from YAML format to input_output_examples format
+            input_output_examples = []
+            for test_group in data.get('tests', []):
+                for test_case in test_group.get('test_cases', []):
+                    if 'output' in test_case:
+                        input_output_examples.append({
+                            'input': test_case['input'],
+                            'output': test_case['output']
+                        })
+                    elif 'validation_func' in test_case:
+                        input_output_examples.append({
+                            'input': test_case['input'],
+                            'validation_func': test_case['validation_func']
+                        })
+            
+            return input_output_examples, task_id, task_description, function_name, allowed_imports
+    except Exception as e:
+        logger.error(f"Error loading task from YAML: {e}")
+        return [], "", "", "", []
+
 async def main():
+    parser = argparse.ArgumentParser(description="Run OpenAlpha_Evolve with a specified YAML configuration file.")
+    parser.add_argument("yaml_path", type=str, help="Path to the YAML configuration file")
+    args = parser.parse_args()
+    yaml_path = args.yaml_path
+
     logger.info("Starting OpenAlpha_Evolve autonomous algorithmic evolution")
     logger.info(f"Configuration: Population Size={settings.POPULATION_SIZE}, Generations={settings.GENERATIONS}")
-    logger.info(f"LLM Models: Pro={settings.PRO_MODEL}, Flash={settings.FLASH_MODEL}, Eval={settings.EVALUATION_MODEL}")
 
-                                                                
-                                                                             
-                                                                                         
+    # Load task configuration and test cases from YAML file
+    test_cases, task_id, task_description, function_name, allowed_imports = load_task_from_yaml(yaml_path)
+    
+    if not test_cases or not task_id or not task_description or not function_name:
+        logger.error("Missing required task configuration in YAML file. Exiting.")
+        return
+
     task = TaskDefinition(
-        id="generic_shortest_path_problem",
-        description=(
-            "Given a weighted, directed graph and a starting node, find the shortest distance "
-            "from the starting node to all other nodes in the graph. "
-            "The graph is represented as a dictionary where keys are node identifiers (e.g., strings or integers), "
-            "and values are dictionaries representing outgoing edges. In these inner dictionaries, "
-            "keys are neighbor node identifiers and values are the weights (costs) of the edges to those neighbors. "
-            "If a node is unreachable from the start node, its distance should be considered infinity. "
-            "The function should return a dictionary where keys are node identifiers and values are the "
-            "calculated shortest distances from the start node. The start node\'s distance to itself is 0."
-            "some nodes might be given only implicitly in the inner dictionaries."
-        ),
-        function_name_to_evolve="solve_shortest_paths",                    
-        input_output_examples=[
-            {
-                "input": [{"A": {"B": 1, "C": 4}, "B": {"C": 2, "D": 5}, "C": {"D": 1}, "D": {}}, "A"],
-                "output": {"A": 0, "B": 1, "C": 3, "D": 4}
-            },
-            {
-                "input": [{"A": {"B": 1}, "B": {"A": 2, "C": 5}, "C": {"D": 1}, "D": {}}, "A"],
-                "output": {"A": 0, "B": 1, "C": 6, "D": 7}
-            },
-            {                    
-                "input": [{"A": {"B": 1}, "B": {}, "C": {"D": 1}, "D": {}}, "A"],
-                "output": {"A": 0, "B": 1, "C": float('inf'), "D": float('inf')}
-            },
-            {                            
-                "input": [{"A": {}, "B": {"C":1}}, "A"],
-                "output": {"A": 0, "B": float('inf'), "C": float('inf')}
-            },
-            {              
-                "input": [{}, "A"],
-                "output": {"A": 0}                                                                                        
-                                                                                                                              
-                                                                                                                              
-                                                                                          
-                                                                                                     
-            },
-             {                                                                             
-                "input": [{}, "A"],                                  
-                "output": {"A": 0}                                                      
-            },
-            {                                                 
-                "input": [{"X": {"Y":1}}, "Z"],
-                "output": {"Z": 0, "X": float('inf'), "Y": float('inf')}                                                                           
-            },
-            {
-                "input": [
-                    {"s": {"u": 10, "x": 5}, "u": {"v": 1, "x": 2}, "v": {"y": 4}, "x": {"u": 3, "v": 9, "y": 2}, "y": {"s": 7, "v": 6}},
-                    "s"
-                ],
-                "output": {"s": 0, "u": 8, "v": 9, "x": 5, "y": 7}
-            },
-            {                                       
-                "input": [
-                    {
-                        "A": {"B": 1, "C": 10},
-                        "B": {"D": 2, "E": 5},
-                        "C": {"F": 1},
-                        "D": {"G": 3},
-                        "E": {"G": 1, "H": 7},
-                        "F": {"H": 2},
-                        "G": {"I": 2},
-                        "H": {"I": 1},
-                        "I": {}
-                    },
-                    "A"
-                ],
-                "output": {"A": 0, "B": 1, "C": 10, "D": 3, "E": 6, "F": 11, "G": 6, "H": 13, "I": 8}
-            }
-        ],
-        allowed_imports=["heapq"],                                                                   
-                                                                                           
+        id=task_id,
+        description=task_description,
+        function_name_to_evolve=function_name,
+        input_output_examples=test_cases,
+        allowed_imports=allowed_imports
     )
 
-                                                              
     task_manager = TaskManagerAgent(
         task_definition=task
     )
 
-                                      
     best_programs = await task_manager.execute()
 
     if best_programs:

@@ -1,0 +1,102 @@
+# Test cases for shortest path algorithm
+task_id: "generic_shortest_path_problem"
+task_description: |
+  Given a weighted, directed graph and a starting node, find the shortest distance 
+  from the starting node to all other nodes in the graph. 
+  The graph is represented as a dictionary where keys are node identifiers (e.g., strings or integers), 
+  and values are dictionaries representing outgoing edges. In these inner dictionaries, 
+  keys are neighbor node identifiers and values are the weights (costs) of the edges to those neighbors. 
+  If a node is unreachable from the start node, its distance should be considered infinity. 
+  The function should return a dictionary where keys are node identifiers and values are the 
+  calculated shortest distances from the start node. The start node's distance to itself is 0.
+  Some nodes might be given only implicitly in the inner dictionaries.
+function_name: "solve_shortest_paths"
+allowed_imports: ["heapq"]
+
+tests:
+  - description: "Shortest path test cases for weighted directed graphs"
+    test_cases:
+      - input: [{"A": {"B": 1, "C": 4}, "B": {"C": 2, "D": 5}, "C": {"D": 1}, "D": {}}, "A"]
+        output: {"A": 0, "B": 1, "C": 3, "D": 4}
+
+      - input: [{"A": {"B": 1}, "B": {"A": 2, "C": 5}, "C": {"D": 1}, "D": {}}, "A"]
+        output: {"A": 0, "B": 1, "C": 6, "D": 7}
+
+      - input: [{"A": {"B": 1}, "B": {}, "C": {"D": 1}, "D": {}}, "A"]
+        output: {"A": 0, "B": 1, "C": float('inf'), "D": float('inf')}
+
+      - input: [{"A": {}, "B": {"C": 1}}, "A"]
+        output: {"A": 0, "B": float('inf'), "C": float('inf')}
+
+      - input: [{}, "A"]
+        output: {"A": 0}
+
+      - input: [{"X": {"Y": 1}}, "Z"]
+        output: {"Z": 0, "X": float('inf'), "Y": float('inf')}
+
+      - input: [
+          {
+            "s": {"u": 10, "x": 5},
+            "u": {"v": 1, "x": 2},
+            "v": {"y": 4},
+            "x": {"u": 3, "v": 9, "y": 2},
+            "y": {"s": 7, "v": 6}
+          },
+          "s"
+        ]
+        output: {"s": 0, "u": 8, "v": 9, "x": 5, "y": 7}
+
+      - input: [
+          {
+            "A": {"B": 1, "C": 10},
+            "B": {"D": 2, "E": 5},
+            "C": {"F": 1},
+            "D": {"G": 3},
+            "E": {"G": 1, "H": 7},
+            "F": {"H": 2},
+            "G": {"I": 2},
+            "H": {"I": 1},
+            "I": {}
+          },
+          "A"
+        ]
+        output: {"A": 0, "B": 1, "C": 10, "D": 3, "E": 6, "F": 11, "G": 6, "H": 13, "I": 8}
+
+  - description: "Validation function examples"
+    test_cases:
+      - input: [{"A": {"B": 1}, "B": {"C": 2}}, "A"]
+        validation_func: |
+          def validate(output):
+              # All distances should be non-negative
+              # Also check that all nodes in the graph are in the output
+              graph = {"A": {"B": 1}, "B": {"C": 2}}
+              all_nodes = set(graph.keys())
+              for node in graph:
+                  all_nodes.update(graph[node].keys())
+              return all(distance >= 0 for distance in output.values()) and all(node in output for node in all_nodes)
+
+      - input: [{"A": {"B": 1}, "B": {"C": 2}}, "A"]
+        validation_func: |
+          def validate(output):
+              # Start node's distance should be 0
+              # Also check that all nodes in the graph are in the output
+              graph = {"A": {"B": 1}, "B": {"C": 2}}
+              all_nodes = set(graph.keys())
+              for node in graph:
+                  all_nodes.update(graph[node].keys())
+              return output.get("A", float('inf')) == 0 and all(node in output for node in all_nodes)
+
+      - input: [{"A": {"B": 1, "C": 4}, "B": {"C": 2}}, "A"]
+        validation_func: |
+          def validate(output):
+              # For any path A->B->C, distance(A->C) <= distance(A->B) + distance(B->C)
+              # This is the triangle inequality property of shortest paths
+              # Also check that all nodes in the graph are in the output
+              graph = {"A": {"B": 1, "C": 4}, "B": {"C": 2}}
+              all_nodes = set(graph.keys())
+              for node in graph:
+                  all_nodes.update(graph[node].keys())
+              if not all(node in output for node in all_nodes):
+                  return False
+              return output["C"] <= output["B"] + 2  # 2 is the weight of B->C
+      

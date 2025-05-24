@@ -35,14 +35,14 @@ class EvaluatorAgent(EvaluatorAgentInterface, BaseAgent):
         return errors
 
     async def _execute_code_safely(
-        self, 
-        code: str, 
+        self,
+        code: str,
         task_for_examples: TaskDefinition,
         timeout_seconds: Optional[int] = None
     ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
         timeout = timeout_seconds if timeout_seconds is not None else self.evaluation_timeout_seconds
         results = {"test_outputs": [], "average_runtime_ms": 0.0}
-        
+
         if not task_for_examples.input_output_examples:
             logger.warning("No input/output examples provided to _execute_code_safely.")
             return results, "No test cases to run."
@@ -59,11 +59,12 @@ class EvaluatorAgent(EvaluatorAgentInterface, BaseAgent):
                 return f"float('{str(arg)}')"
             return json.dumps(arg)
 
-                                                                                          
+
         test_cases_str = json.dumps(task_for_examples.input_output_examples)
         test_cases_str = test_cases_str.replace('"Infinity"', 'float("inf")')
+        test_cases_str = test_cases_str.replace('"-Infinity"', 'float("-inf")')
         test_cases_str = test_cases_str.replace('"NaN"', 'float("nan")')
-                                                                      
+
         test_cases_str = test_cases_str.replace('true', 'True').replace('false', 'False').replace('null', 'None')
 
         test_harness_code = f"""
@@ -116,7 +117,7 @@ for i, test_case in enumerate(test_cases):
         elif isinstance(input_args, dict):
             actual_output = function_to_test(**input_args)
         elif input_args is None:
-             actual_output = function_to_test()
+            actual_output = function_to_test()
         else:
             actual_output = function_to_test(input_args)
             
@@ -300,7 +301,7 @@ print(json.dumps(final_output, default=custom_json_serializer))
     def _assess_correctness(self, execution_results: Dict[str, Any], expected_outputs: List[Dict[str, Any]]) -> Tuple[float, int, int]:
         passed_tests = 0
         total_tests = len(expected_outputs)
-        
+
         if not execution_results or "test_outputs" not in execution_results:
             logger.warning("Execution results are missing 'test_outputs' field.")
             return 0.0, 0, total_tests
@@ -309,26 +310,56 @@ print(json.dumps(final_output, default=custom_json_serializer))
 
         if len(actual_test_outputs) != total_tests:
             logger.warning(f"Mismatch in number of test outputs ({len(actual_test_outputs)}) and expected outputs ({total_tests}). Some tests might have crashed before producing output.")
-        
+
         for i, expected in enumerate(expected_outputs):
             actual_output_detail = next((res for res in actual_test_outputs if res.get("test_case_id") == i), None)
 
             if actual_output_detail and actual_output_detail.get("status") == "success":
                 actual = actual_output_detail.get("output")
-                expected_val = expected["output"]
-                
-                if self._compare_outputs(actual, expected_val):
-                    passed_tests += 1
+
+                logger.debug(f"Test case {i}: Actual output: {actual}")
+
+                # Check if we have a validation function
+                if "validation_func" in expected:
+                    logger.debug(f"Test case {i}: Using validation function.")
+                    try:
+                        # Create a namespace for the validation function
+                        namespace = {}
+                        # Execute the validation function definition
+                        exec(expected["validation_func"], namespace)
+                        # Get the validate function
+                        validate_func = namespace.get("validate")
+                        if validate_func and callable(validate_func):
+                            # Revert: Only pass the actual output to the validation function
+                            if validate_func(actual):
+                                passed_tests += 1
+                                logger.debug(f"Test case {i}: Validation function returned True.")
+                            else:
+                                logger.debug(f"Test case {i}: Validation function returned False.")
+                        else:
+                            logger.warning(f"Validation function not found or not callable in test case {i}")
+                    except Exception as e:
+                        logger.error(f"Error executing validation function for test case {i}: {str(e)}", exc_info=True) # Log exception details
+                # Check against expected output if provided
+                elif "output" in expected:
+                    expected_val = expected["output"]
+                    logger.debug(f"Test case {i}: Comparing with expected output: {expected_val}")
+                    if self._compare_outputs(actual, expected_val):
+                        passed_tests += 1
+                        logger.debug(f"Test case {i}: Comparison returned True.")
+                    else:
+                        logger.debug(f"Test case {i}: Comparison returned False.")
                 else:
-                    logger.debug(f"Test case {i} failed: Expected '{expected_val}', Got '{actual}'")
+                    logger.warning(f"Test case {i} has neither validation function nor expected output")
             elif actual_output_detail:
                 logger.debug(f"Test case {i} had error: {actual_output_detail.get('error')}")
             else:
                 logger.debug(f"Test case {i}: No output found in results.")
 
+        logger.debug(f"Finished assessing correctness. Passed tests: {passed_tests}/{total_tests}")
         if total_tests == 0:
             return 1.0, 0, 0
-        
+
         correctness = passed_tests / total_tests
         return correctness, passed_tests, total_tests
 

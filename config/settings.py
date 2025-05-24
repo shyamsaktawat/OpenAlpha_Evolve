@@ -46,7 +46,7 @@ MIN_ISLAND_SIZE = 2  # Minimum number of programs per island
 MIGRATION_RATE = 0.2  # Rate at which programs migrate between islands
 
 # Debug Settings
-DEBUG = os.getenv("DEBUG", False)
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 EVALUATION_TIMEOUT_SECONDS = 800
 
 # Docker Execution Settings
