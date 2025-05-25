@@ -204,7 +204,7 @@ class TestEvaluatorAgentDockerExecution(unittest.IsolatedAsyncioTestCase):
     @patch('evaluator_agent.agent.EvaluatorAgent._execute_code_safely', new_callable=AsyncMock)
     async def test_evaluate_program_failed_evaluation_due_to_error(self, mock_execute_code_safely):
         # --- Test Case: Failed full evaluation (script error) ---
-        mock_execute_code_safely.return_value = (None, "Execution Error: Script crashed badly")
+        mock_execute_code_safely.return_value = (None, "Script crashed badly")
 
         evaluated_program = await self.agent.evaluate_program(self.program, self.task_definition)
 
