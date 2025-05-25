@@ -137,7 +137,8 @@ class TestEvaluatorAgentDockerExecution(unittest.IsolatedAsyncioTestCase):
     async def test_execute_code_safely_timeout(self, mock_create_subprocess_exec):
         # --- Test Case: Timeout ---
         # Simulate timeout on the initial 'docker run' command
-        mock_proc_docker_run = create_mock_subprocess("", "", 0, communicate_raises=asyncio.TimeoutError("Simulated timeout"))
+        # The process is still running when timeout occurs, so returncode should be None
+        mock_proc_docker_run = create_mock_subprocess("", "", None, communicate_raises=asyncio.TimeoutError("Simulated timeout"))
         
         # Mocks for subsequent 'docker stop' and 'docker kill' attempts
         mock_proc_docker_stop = create_mock_subprocess("container_id_stopped", "", 0) # stdout, stderr, returncode
