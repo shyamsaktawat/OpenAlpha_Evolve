@@ -1,0 +1,136 @@
+task_id: "circle_packing_v1"
+task_description: |
+  Evolve a Python function to pack a given number of circles into a unit square (size 1.0 x 1.0)
+  such that the sum of their radii is maximized.
+  The function should take the number of circles as input and return a list of
+  (center_x, center_y, radius) tuples for each circle, and the sum of the radii.
+
+  Constraints:
+  1. All circles must be entirely within the unit square (0.0 to 1.0 for both x and y coordinates).
+     A circle (cx, cy, r) is within the square if:
+     cx - r >= 0.0
+     cx + r <= 1.0
+     cy - r >= 0.0
+     cy + r <= 1.0
+  2. Circles must not overlap. The distance between the centers of any two circles
+     (ci, cj) must be greater than or equal to the sum of their radii (ri + rj).
+     sqrt((cix - cjx)^2 + (ciy - cjy)^2) >= ri + rj
+
+function_name: "pack_circles"
+allowed_imports: ["math", "random", "numpy"] # numpy might be useful for vector operations
+
+tests:
+  - description: "Pack a single circle"
+    name: "single_circle_test"
+    test_cases:
+      - input: [1] # num_circles
+        # Expected output is tricky as the function itself might not perform full optimization.
+        # The validation_func will be more crucial here.
+        # We expect the function to return a list of one circle and its radius sum.
+        # The validation function will check constraints and if the sum of radii is positive.
+        validation_func: |
+          def validate(output_tuple):
+              if not isinstance(output_tuple, tuple) or len(output_tuple) != 2:
+                  return "Output should be a tuple: (list_of_circles, sum_of_radii)"
+              
+              circles, sum_radii = output_tuple
+              
+              if not isinstance(circles, list):
+                  return "First element of output tuple should be a list of circles."
+              if not isinstance(sum_radii, (float, int)):
+                  return "Second element of output tuple (sum_radii) should be a number."
+
+              num_circles_expected = 1 # From input
+              if len(circles) != num_circles_expected:
+                  return f"Expected {num_circles_expected} circle(s), got {len(circles)}"
+
+              if not (sum_radii > 0): # Basic check for a single circle
+                  return f"Sum of radii ({sum_radii}) should be positive."
+
+              calculated_sum = 0
+              for i, c in enumerate(circles):
+                  if not (isinstance(c, tuple) and len(c) == 3):
+                      return f"Circle {i} is not a valid tuple (cx, cy, r)."
+                  cx, cy, r = c
+                  if not all(isinstance(val, (float, int)) for val in [cx, cy, r]):
+                      return f"Circle {i} ({c}) params must be numbers."
+                  if r <= 0:
+                      return f"Circle {i} ({c}) has non-positive radius."
+                  
+                  # Constraint 1: Within unit square
+                  square_size = 1.0
+                  if not (cx - r >= 0.0 and cx + r <= square_size and \
+                          cy - r >= 0.0 and cy + r <= square_size):
+                      return f"Circle {i} ({c}) is not within the unit square."
+                  calculated_sum += r
+
+              # Constraint 2: No overlaps (trivial for 1 circle)
+              
+              # Check if returned sum_radii matches calculated sum
+              if abs(calculated_sum - sum_radii) > 1e-6:
+                  return f"Returned sum_radii ({sum_radii}) does not match calculated sum ({calculated_sum})."
+
+              return True # Passes validation
+
+  - description: "Pack two circles"
+    name: "two_circles_test"
+    test_cases:
+      - input: [2] # num_circles
+        validation_func: |
+          def validate(output_tuple):
+              if not isinstance(output_tuple, tuple) or len(output_tuple) != 2:
+                  return "Output should be a tuple: (list_of_circles, sum_of_radii)"
+              
+              circles, sum_radii = output_tuple
+
+              if not isinstance(circles, list):
+                  return "First element of output tuple should be a list of circles."
+              if not isinstance(sum_radii, (float, int)):
+                  return "Second element of output tuple (sum_radii) should be a number."
+
+              num_circles_expected = 2 # From input
+              if len(circles) != num_circles_expected:
+                  return f"Expected {num_circles_expected} circle(s), got {len(circles)}"
+
+              if not (sum_radii > 0):
+                  return f"Sum of radii ({sum_radii}) should be positive for two circles."
+
+              calculated_sum = 0
+              for i, c in enumerate(circles):
+                  if not (isinstance(c, tuple) and len(c) == 3):
+                      return f"Circle {i} is not a valid tuple (cx, cy, r)."
+                  cx, cy, r = c
+                  if not all(isinstance(val, (float, int)) for val in [cx, cy, r]):
+                      return f"Circle {i} ({c}) params must be numbers."
+                  if r <= 0:
+                      return f"Circle {i} ({c}) has non-positive radius."
+
+                  # Constraint 1: Within unit square
+                  square_size = 1.0
+                  if not (cx - r >= 0.0 and cx + r <= square_size and \
+                          cy - r >= 0.0 and cy + r <= square_size):
+                      return f"Circle {i} ({c}) is not within the unit square."
+                  calculated_sum += r
+              
+              # Constraint 2: No overlaps
+              if len(circles) == 2:
+                  c1_cx, c1_cy, c1_r = circles[0]
+                  c2_cx, c2_cy, c2_r = circles[1]
+                  dist_sq = (c1_cx - c2_cx)**2 + (c1_cy - c2_cy)**2
+                  sum_radii_sq = (c1_r + c2_r)**2
+                  # Using squared distances to avoid sqrt, allow for small tolerance
+                  if dist_sq < sum_radii_sq - 1e-9: # Check if dist < sum_radii
+                      return f"Circles {circles[0]} and {circles[1]} overlap."
+              
+              # Check if returned sum_radii matches calculated sum
+              if abs(calculated_sum - sum_radii) > 1e-6:
+                  return f"Returned sum_radii ({sum_radii}) does not match calculated sum ({calculated_sum})."
+
+              return True # Passes validation
+
+# It's challenging to define a simple "expected output" for pack_circles
+# because the optimal packing is non-trivial and the evolved function
+# might use various heuristics. The validation_func ensures constraints
+# are met and the returned sum of radii is consistent.
+# The actual fitness will be driven by maximizing this sum_radii,
+# assuming the validation passes. 

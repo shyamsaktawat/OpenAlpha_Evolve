@@ -190,6 +190,44 @@ tests:
 
 See the example in examples/shortest_path.yaml
 
+### Included Examples
+
+OpenAlpha_Evolve comes with a couple of pre-defined examples in the `examples/` directory to get you started:
+
+1.  **Shortest Path (Dijkstra's Algorithm)** - `examples/shortest_path.yaml`
+    *   **Goal**: Evolve a Python function `find_shortest_path(graph, start_node, end_node)` that implements Dijkstra's algorithm or a similar shortest path algorithm.
+    *   **Input**: An adjacency list representation of a graph, a starting node, and an ending node.
+    *   **Output**: A list of nodes representing the shortest path from start to end, and the total distance of that path.
+    *   **Diagram/Concept**:
+        ```
+        (A) --1-- (B) --2-- (C)
+         |         |         |
+         4----(D)--3---------5
+               |_________|
+        
+        Task: Find shortest path from A to C.
+        Expected: ([A, B, C], 3) or ([A, D, B, C], 1+3+2=6) etc. (depending on exact graph, fitness aims for lowest cost)
+        ```
+        *(This is a simplified textual representation. A graphical diagram of a sample graph and a path would be ideal here.)*
+
+2.  **Circle Packing** - `examples/circle_packing.yaml`
+    *   **Goal**: Evolve a Python function `pack_circles(num_circles)` that attempts to pack a given number of circles into a unit square (1.0x1.0) such that the sum of their radii is maximized.
+    *   **Input**: The number of circles to pack.
+    *   **Output**: A list of `(center_x, center_y, radius)` tuples for each circle, and the total sum of the radii.
+    *   **Constraints**: Circles must be within the unit square and must not overlap.
+    *   **Diagram/Concept**:
+        Imagine trying to fit as many differently-sized (or same-sized) coins as possible into a square box without them overlapping, and you want the total area (or sum of radii, as in this example) of the coins to be as large as possible.
+        ```
+        +-----------------+
+        | O   o           |
+        |  o      O       |
+        |    O            |
+        | o       o       |
+        +-----------------+
+        Task: Maximize sum of radii of non-overlapping circles in the square.
+        ```
+        *(This is a simplified textual representation. A visual diagram showing a few circles packed into a square would be beneficial.)*
+
 ### 2. Using Python Code (Legacy)
 
 You can still define tasks programmatically using the `TaskDefinition` class:
