@@ -22,10 +22,10 @@ class CodeGeneratorAgent(CodeGeneratorInterface):
         super().__init__(config)
         self.model_name = settings.LITELLM_DEFAULT_MODEL
         self.generation_config = {
-            "temperature": settings.LITELLM_TEMPERATURE,
-            "top_p": settings.LITELLM_TOP_P,
-            "top_k": settings.LITELLM_TOP_K,
-            "max_tokens": settings.LITELLM_MAX_TOKENS,
+            "temperature": float(settings.LITELLM_TEMPERATURE),
+            "top_p": float(settings.LITELLM_TOP_P),
+            "top_k": int(settings.LITELLM_TOP_K),
+            "max_tokens": int(settings.LITELLM_MAX_TOKENS),
         }
         self.litellm_extra_params = {
             "base_url": settings.LITELLM_DEFAULT_BASE_URL,
@@ -42,11 +42,7 @@ class CodeGeneratorAgent(CodeGeneratorInterface):
 
 I need you to provide your changes as a sequence of diff blocks in the following format:
 
-<<<<<<< SEARCH
-# Original code block to be found and replaced (COPY EXACTLY from original)
-=======
 # New code block to replace the original
->>>>>>> REPLACE
 
 IMPORTANT DIFF GUIDELINES:
 1. The SEARCH block MUST be an EXACT copy of code from the original - match whitespace, indentation, and line breaks precisely
@@ -57,13 +53,6 @@ IMPORTANT DIFF GUIDELINES:
 6. Pay special attention to matching the exact original indentation of the code in your SEARCH block, as this is crucial for correct application in environments sensitive to indentation (like Python).
 
 Example of a good diff:
-<<<<<<< SEARCH
-def calculate_sum(numbers):
-    result = 0
-    for num in numbers:
-        result += num
-    return result
-=======
 def calculate_sum(numbers):
     if not numbers:
         return 0
@@ -71,7 +60,6 @@ def calculate_sum(numbers):
     for num in numbers:
         result += num
     return result
->>>>>>> REPLACE
 
 Make sure your diff can be applied correctly!
 '''
@@ -336,24 +324,14 @@ End of block
 Final line"""
 
         diff = """Some preamble text from LLM...
-<<<<<<< SEARCH
-Line 2 to be replaced
-=======
 Line 2 has been successfully replaced
->>>>>>> REPLACE
 
 Some other text...
 
-<<<<<<< SEARCH
-Another block
-To be changed
-End of block
-=======
 This
 Entire
 Block
 Is New
->>>>>>> REPLACE
 Trailing text..."""
         expected_output = """Line 1
 Line 2 has been successfully replaced
