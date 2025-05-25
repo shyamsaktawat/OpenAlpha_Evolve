@@ -36,4 +36,3 @@ python-dotenv>=1.0.0
 asyncio>=3.4.3
 uuid>=1.30
 gradio>=4.0.0
-pytest

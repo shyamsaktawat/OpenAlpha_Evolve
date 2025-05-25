@@ -33,29 +33,14 @@ class PromptDesignerAgent(PromptDesignerInterface, BaseAgent):
         return prompt
 
     def _format_input_output_examples(self) -> str:
-        """Format input/output examples for the prompt."""
-        examples = []
-        
-        # YAML format with tests
-        if self.task_definition.tests:
-            for test_group in self.task_definition.tests:
-                for test_case in test_group['test_cases']:
-                    if 'output' in test_case:
-                        examples.append(f"Input: {test_case['input']}\nOutput: {test_case['output']}")
-                    elif 'validation_func' in test_case:
-                        examples.append(f"Input: {test_case['input']}\nValidation: {test_case['validation_func']}")
-        
-        # legacy format with input_output_examples
-        elif self.task_definition.input_output_examples:
-            for example in self.task_definition.input_output_examples:
-                input_str = str(example.get('input'))
-                output_str = str(example.get('output'))
-                examples.append(f"Input: {input_str}\nOutput: {output_str}")
-        
-        if not examples:
+        if not self.task_definition.input_output_examples:
             return "No input/output examples provided."
-        
-        return "\n\n".join(examples)
+        formatted_examples = []
+        for i, example in enumerate(self.task_definition.input_output_examples):
+            input_str = str(example.get('input'))
+            output_str = str(example.get('output'))
+            formatted_examples.append(f"Example {i+1}:\n  Input: {input_str}\n  Expected Output: {output_str}")
+        return "\n".join(formatted_examples)
 
     def _format_evaluation_feedback(self, program: Program, evaluation_feedback: Optional[Dict[str, Any]]) -> str:
         if not evaluation_feedback:

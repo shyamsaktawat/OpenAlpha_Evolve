@@ -31,7 +31,7 @@ class TestEvaluatorAgentDockerExecution(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
         self.agent = EvaluatorAgent()
-        self.program = Program(id="test_prog", code="def solve():\n  return 42", parent_id=None, fitness_scores={})
+        self.program = Program(id="test_prog", code="def solve():\n  return 42", version=1, task_id="test_task", parent_id=None, fitness_scores={})
         self.task_definition = TaskDefinition(
             id="test_task",
             description="Test task",
@@ -223,72 +223,6 @@ class TestEvaluatorAgentDockerExecution(unittest.IsolatedAsyncioTestCase):
         mock_execute_code_safely.return_value = (expected_script_output, None)
 
         evaluated_program = await self.agent.evaluate_program(self.program, self.task_definition)
-
-        self.assertEqual(evaluated_program.status, "failed_evaluation")
-        self.assertEqual(evaluated_program.fitness_scores["correctness"], 0.0)
-        self.assertEqual(evaluated_program.fitness_scores["passed_tests"], 0.0)
-        self.assertEqual(evaluated_program.fitness_scores["total_tests"], 1.0)
-        self.assertIn("Failed 1 out of 1 test cases.", evaluated_program.errors)
-
-    @patch('evaluator_agent.agent.EvaluatorAgent._execute_code_safely', new_callable=AsyncMock)
-    async def test_evaluate_program_with_validation_function(self, mock_execute_code_safely):
-        # --- Test Case: Evaluation with validation function ---
-        expected_script_output = {
-            "test_outputs": [{"test_case_id": 0, "output": 15, "runtime_ms": 10.0, "status": "success"}],
-            "average_runtime_ms": 10.0
-        }
-        mock_execute_code_safely.return_value = (expected_script_output, None)
-
-        # Create a task definition with a validation function
-        task_with_validation = TaskDefinition(
-            id="test_task_validation",
-            description="Test task with validation function",
-            function_name_to_evolve="test_function",
-            input_output_examples=[
-                {
-                    "input": [10],
-                    "validation_func": """
-def validate(input):
-    return input > 10
-"""
-                }
-            ]
-        )
-
-        evaluated_program = await self.agent.evaluate_program(self.program, task_with_validation)
-
-        self.assertEqual(evaluated_program.status, "evaluated")
-        self.assertEqual(evaluated_program.fitness_scores["correctness"], 1.0)
-        self.assertEqual(evaluated_program.fitness_scores["passed_tests"], 1.0)
-        self.assertEqual(evaluated_program.fitness_scores["total_tests"], 1.0)
-        self.assertEqual(len(evaluated_program.errors), 0)
-
-    @patch('evaluator_agent.agent.EvaluatorAgent._execute_code_safely', new_callable=AsyncMock)
-    async def test_evaluate_program_with_failed_validation(self, mock_execute_code_safely):
-        # --- Test Case: Failed validation function ---
-        expected_script_output = {
-            "test_outputs": [{"test_case_id": 0, "output": 5, "runtime_ms": 10.0, "status": "success"}],
-            "average_runtime_ms": 10.0
-        }
-        mock_execute_code_safely.return_value = (expected_script_output, None)
-
-        # Create a task definition with a validation function
-        task_with_validation = TaskDefinition(
-            id="test_task_validation_fail",
-            description="Test task with failing validation function",
-            function_name_to_evolve="test_function",
-            input_output_examples=[
-                {
-                    "input": [10],
-                    "validation_func": """
-def validate(input):
-    return input > 10
-"""
-                }
-            ]
-        )
-
-        evaluated_program = await self.agent.evaluate_program(self.program, task_with_validation)
 
         self.assertEqual(evaluated_program.status, "failed_evaluation")
         self.assertEqual(evaluated_program.fitness_scores["correctness"], 0.0)
