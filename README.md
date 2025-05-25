@@ -106,35 +106,116 @@ graph TD
 
 ---
 
-## �� Project Structure
+## 📂 Project Structure
 
-```text
-./
-├── agents/                  # Contains the core intelligent agents responsible for different parts of the evolutionary process. Each agent is in its own subdirectory.
-│   ├── code_generator/      # Agent responsible for generating code using LLMs.
-│   ├── database_agent/      # Agent for managing the storage and retrieval of programs and their metadata.
-│   ├── evaluator_agent/     # Agent that evaluates the generated code for syntax, execution, and fitness.
-│   ├── prompt_designer/     # Agent that crafts prompts for the LLM for initial generation, mutation, and bug fixing.
-│   ├── selection_controller/  # Agent that implements the selection strategy for parent and survivor programs.
-│   ├── task_manager/        # Agent that orchestrates the overall evolutionary loop and coordinates other agents.
-│   ├── rl_finetuner/        # Placeholder for a future Reinforcement Learning Fine-Tuner agent to optimize prompts.
-│   └── monitoring_agent/    # Placeholder for a future Monitoring Agent to track and visualize the process.
-├── config/                  # Holds configuration files, primarily `settings.py` for system parameters and API keys.
-├── core/                    # Defines core data structures and interfaces, like `Program` and `TaskDefinition`.
-├── utils/                   # Contains utility functions and helper classes used across the project (currently minimal).
-├── tests/                   # Includes unit and integration tests to ensure code quality and correctness (placeholders, to be expanded).
-├── scripts/                 # Stores helper scripts for various tasks, such as generating diagrams or reports.
-├── main.py                  # The main entry point to run the OpenAlpha_Evolve system and start an evolutionary run.
-├── requirements.txt         # Lists all Python package dependencies required to run the project.
-├── .env.example             # An example file showing the environment variables needed, such as API keys. Copy this to `.env` and fill in your values.
-├── .gitignore               # Specifies intentionally untracked files that Git should ignore (e.g., `.env`, `__pycache__/`).
-├── LICENSE.md               # Contains the full text of the MIT License under which the project is distributed.
-└── README.md                # This file! Provides an overview of the project, setup instructions, and documentation.
+```mermaid
+graph TD
+    Root("./")
+
+    Root --> Agents["agents/"]
+    Agents --> CodeGen["code_generator/"]
+    Agents --> DB["database_agent/"]
+    Agents --> Eval["evaluator_agent/"]
+    Agents --> Prompt["prompt_designer/"]
+    Agents --> Select["selection_controller/"]
+    Agents --> TaskMgr["task_manager/"]
+    %% Future Agents
+    Agents --> RLFineTune["rl_finetuner/ (Future)"]
+    Agents --> Monitor["monitoring_agent/ (Future)"]
+
+    Root --> Config["config/"]
+    Root --> Core["core/"]
+    Root --> ExamplesDir["examples/"]
+    Root --> TestsDir["tests/"]
+    Root --> Utils["utils/"]
+    Root --> Scripts["scripts/"]
+
+    Root --> MainPy["main.py (Entry Point)"]
+    Root --> AppPy["app.py (Gradio UI)"]
+    Root --> Requirements["requirements.txt"]
+    Root --> DotEnv[".env.example"]
+    Root --> Readme["README.md"]
+    Root --> License["LICENSE.md"]
+
+    subgraph Key Files
+        MainPy
+        AppPy
+        Requirements
+        DotEnv
+        Readme
+        License
+    end
+
+    subgraph Core Logic
+        Agents
+        Config
+        Core
+    end
+
+    subgraph User Interaction & Examples
+        ExamplesDir
+        TestsDir
+    end
+
+    style Root fill:#eee,stroke:#333,stroke-width:2px
+    style Agents fill:#f9f,stroke:#333
+    style Config fill:#f9f,stroke:#333
+    style Core fill:#f9f,stroke:#333
+    style ExamplesDir fill:#ccf,stroke:#333
+    style TestsDir fill:#ccf,stroke:#333
+
+    %% Descriptions (could be added as tooltips if Mermaid syntax supported it directly in md)
+    %% CodeGen[Code Generator Agent]
+    %% DB[Database Agent]
+    %% Eval[Evaluator Agent]
+    %% Prompt[Prompt Designer Agent]
+    %% Select[Selection Controller Agent]
+    %% TaskMgr[Task Manager Agent]
+    %% Config[System Parameters & API Keys]
+    %% Core[Core Data Structures & Interfaces]
+    %% ExamplesDir[Example Task Definitions]
+    %% TestsDir[Unit & Integration Tests]
 ```
+
+**Brief Overview of Key Directories:**
+
+*   **`agents/`**: Contains the core intelligent agents responsible for different parts of the evolutionary process. Each agent is in its own subdirectory.
+    *   `code_generator/`: Agent responsible for generating code using LLMs.
+    *   `database_agent/`: Agent for managing the storage and retrieval of programs and their metadata.
+    *   `evaluator_agent/`: Agent that evaluates the generated code for syntax, execution, and fitness.
+    *   `prompt_designer/`: Agent that crafts prompts for the LLM for initial generation, mutation, and bug fixing.
+    *   `selection_controller/`: Agent that implements the selection strategy for parent and survivor programs.
+    *   `task_manager/`: Agent that orchestrates the overall evolutionary loop and coordinates other agents.
+    *   `rl_finetuner/`: Placeholder for a future Reinforcement Learning Fine-Tuner agent to optimize prompts.
+    *   `monitoring_agent/`: Placeholder for a future Monitoring Agent to track and visualize the process.
+*   **`config/`**: Holds configuration files, primarily `settings.py` for system parameters and API keys.
+*   **`core/`**: Defines core data structures and interfaces, like `Program` and `TaskDefinition`.
+*   **`examples/`**: Contains YAML files defining algorithmic tasks for the system to solve.
+*   **`tests/`**: Includes unit and integration tests to ensure code quality and correctness.
+*   **`main.py`**: The main entry point to run the OpenAlpha_Evolve system and start an evolutionary run.
+*   **`app.py`**: The Gradio web interface for interactive task definition and execution.
 
 ---
 
 ## 🏁 Getting Started
+
+Here's a quick visual guide to get OpenAlpha_Evolve up and running on your system:
+
+```mermaid
+graph LR
+    A[Clone Repository] --> B(Setup Virtual Environment);
+    B --> C[Install Dependencies];
+    C --> D{Copy .env_example to .env};
+    D --> E[Fill .env with API Keys];
+    E --> F((Run an Example!));
+    E --> G((Launch Gradio UI));
+
+    style A fill:#eee,stroke:#333,stroke-width:2px
+    style F fill:#cfc,stroke:#333,stroke-width:2px
+    style G fill:#cfc,stroke:#333,stroke-width:2px
+```
+
+**Step-by-step:**
 
 1.  **Prerequisites**:
     *   Python 3.10+
@@ -193,7 +274,33 @@ Want to challenge OpenAlpha_Evolve with a new problem? It's easy! You can define
 
 ### 1. Using YAML Files (Recommended)
 
-Create a YAML file in the `examples` directory with the following structure:
+Create a YAML file in the `examples` directory. A task definition YAML typically looks like this:
+
+```mermaid
+graph TD
+    Task[Task Definition (YAML)]
+    Task --> TaskID["task_id: string"];
+    Task --> TaskDesc["task_description: multiline_string"];
+    Task --> FuncName["function_name: string"];
+    Task --> Imports["allowed_imports: list_of_strings"];
+    Task --> TestsArr["tests: array_of_test_groups"];
+    
+    TestsArr --> TestGroup1["Test Group 1"];
+    TestGroup1 --> TGDesc1["description: string"];
+    TestGroup1 --> TGName1["name: string"];
+    TestGroup1 --> TGTestCases1["test_cases: array"];
+    TGTestCases1 --> TestCase1["Test Case 1.1"];
+    TestCase1 --> TCInput1["input: list_of_args"];
+    TestCase1 --> TCOutput1["output: expected_value (optional)"];
+    TestCase1 --> TCValFunc1["validation_func: python_code_string (optional)"];
+
+    style Task fill:#eee,stroke:#333,stroke-width:2px
+    style TestsArr fill:#ccf,stroke:#333
+    style TestGroup1 fill:#ddf,stroke:#333
+    style TestCase1 fill:#fef,stroke:#333
+```
+
+**Core Components:**
 
 ```yaml
 task_id: "your_task_id"
