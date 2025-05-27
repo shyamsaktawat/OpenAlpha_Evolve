@@ -1,0 +1,313 @@
+{
+    "generic_shortest_path_problem_gen0_prog0": {
+        "id": "generic_shortest_path_problem_gen0_prog0",
+        "code": "import heapq\n\ndef solve_shortest_paths(graph, start_node):\n    \"\"\"\n    Finds the shortest distance from a starting node to all other nodes in a weighted, directed graph.\n\n    Args:\n        graph: A dictionary representing the graph. Keys are node identifiers, and values are dictionaries\n               representing outgoing edges. In these inner dictionaries, keys are neighbor node identifiers\n               and values are the weights (costs) of the edges to those neighbors.\n        start_node: The starting node identifier.\n\n    Returns:\n        A dictionary where keys are node identifiers and values are the calculated shortest distances\n        from the start node. If a node is unreachable, its distance is infinity.\n    \"\"\"\n    if not graph:\n        return {start_node: 0} if start_node not in [node for sub_graph in graph for node in sub_graph] else {start_node:0}\n\n    distances = {}\n    for node in [node for sub_graph in graph for node in sub_graph] + [start_node]:\n        distances[node] = float('inf')\n    distances[start_node] = 0\n    pq = [(0, start_node)]\n\n    while pq:\n        dist, current_node = heapq.heappop(pq)\n\n        if dist > distances[current_node]:\n            continue\n\n        if current_node in [node for sub_graph in graph for node in sub_graph]:\n            for neighbor, weight in [item for sub_graph in graph for node, item in sub_graph.items() if node == current_node]:\n                new_dist = dist + weight\n                if new_dist < distances[neighbor]:\n                    distances[neighbor] = new_dist\n                    heapq.heappush(pq, (new_dist, neighbor))\n\n    if not all(value != float('inf') for value in distances.values()):\n        return distances\n\n    return distances",
+        "fitness_scores": {
+            "correctness": 0.09090909090909091,
+            "runtime_ms": Infinity,
+            "passed_tests": 1.0,
+            "total_tests": 11.0,
+            "highest_level_passed": -1.0
+        },
+        "generation": 0,
+        "parent_id": null,
+        "island_id": 0,
+        "errors": [
+            "Failed 10 of 11 tests at Level 0 ('default_level')."
+        ],
+        "status": "failed_evaluation",
+        "created_at": 1748260454.446806,
+        "task_id": null
+    },
+    "generic_shortest_path_problem_gen0_prog1": {
+        "id": "generic_shortest_path_problem_gen0_prog1",
+        "code": "import heapq\n\ndef solve_shortest_paths(graph, start_node):\n    if not graph:\n        if start_node is None:\n            return None\n        else:\n            return {start_node: 0}\n    \n    distances = {}\n    for node in set(graph.keys()).union(*[list(neighbors.keys()) for neighbors in graph.values()]):\n        distances[node] = float('inf')\n    \n    if start_node not in distances:\n        distances[start_node] = 0\n        \n    distances[start_node] = 0\n    pq = [(0, start_node)]\n\n    while pq:\n        dist, current_node = heapq.heappop(pq)\n\n        if dist > distances[current_node]:\n            continue\n\n        if current_node in graph:\n            for neighbor, weight in graph[current_node].items():\n                new_dist = dist + weight\n                if new_dist < distances[neighbor]:\n                    distances[neighbor] = new_dist\n                    heapq.heappush(pq, (new_dist, neighbor))\n                    \n    return {node: (distances[node] if distances[node] != float('inf') else \"float('inf')\") for node in distances}",
+        "fitness_scores": {
+            "correctness": 1.0,
+            "runtime_ms": 0.03400372727665771,
+            "passed_tests": 11.0,
+            "total_tests": 11.0,
+            "highest_level_passed": 0.0
+        },
+        "generation": 0,
+        "parent_id": null,
+        "island_id": 1,
+        "errors": [],
+        "status": "evaluated",
+        "created_at": 1748260454.447384,
+        "task_id": null
+    },
+    "generic_shortest_path_problem_gen0_prog2": {
+        "id": "generic_shortest_path_problem_gen0_prog2",
+        "code": "import heapq\n\ndef solve_shortest_paths(graph, start_node):\n    \"\"\"\n    Finds the shortest distances from a starting node to all other nodes in a weighted, directed graph.\n\n    Args:\n        graph (dict): A dictionary representing the graph. Keys are node identifiers, and values are dictionaries\n                      of outgoing edges (neighbor node identifiers as keys, edge weights as values).\n        start_node: The identifier of the starting node.\n\n    Returns:\n        dict: A dictionary where keys are node identifiers and values are the shortest distances from the start node.\n              Returns None if no path is found from the start node to the other nodes.\n    \"\"\"\n    distances = {}\n    for node in set(list(graph.keys()) + [neighbor for node in graph for neighbor in graph.get(node, {}).keys()]):\n        distances[node] = float('inf')\n    distances[start_node] = 0\n    pq = [(0, start_node)]  # Priority queue (distance, node)\n\n    while pq:\n        dist, u = heapq.heappop(pq)\n\n        if dist > distances[u]:\n            continue\n\n        if u in graph:\n            for v, weight in graph[u].items():\n                if distances[u] != float('inf') and distances[u] + weight < distances[v]:\n                    distances[v] = distances[u] + weight\n                    heapq.heappush(pq, (distances[v], v))\n    \n    if all(dist == float('inf') for dist in distances.values()) and distances.get(start_node, float('inf')) == 0:\n      return distances\n    \n    if all(dist == float('inf') for dist in distances.values()) and distances.get(start_node, float('inf')) != 0:\n        return distances\n        \n    if all(dist == float('inf') or dist == 0 for dist in distances.values()):\n        return distances\n    \n    return distances",
+        "fitness_scores": {
+            "correctness": 0.7272727272727273,
+            "runtime_ms": Infinity,
+            "passed_tests": 8.0,
+            "total_tests": 11.0,
+            "highest_level_passed": -1.0
+        },
+        "generation": 0,
+        "parent_id": null,
+        "island_id": 2,
+        "errors": [
+            "Failed 3 of 11 tests at Level 0 ('default_level')."
+        ],
+        "status": "failed_evaluation",
+        "created_at": 1748260454.447932,
+        "task_id": null
+    },
+    "generic_shortest_path_problem_gen0_prog3": {
+        "id": "generic_shortest_path_problem_gen0_prog3",
+        "code": "import heapq\n\ndef solve_shortest_paths(graph, start_node):\n    if not graph or start_node not in {node for sub_graph in graph for node in sub_graph} and (not graph or start_node not in [key for sub_graph in graph for key in sub_graph.keys()]):\n        all_nodes = set()\n        for sub_graph in graph:\n            all_nodes.update(sub_graph.keys())\n            for neighbor in sub_graph.values():\n                all_nodes.update(neighbor.keys())\n        \n        if start_node not in all_nodes and graph and not all(len(sub_graph) == 0 for sub_graph in graph):\n          \n          all_nodes.add(start_node)\n        \n        result = {node: float('inf') for node in all_nodes}\n        if start_node in result:\n            result[start_node] = 0\n        return result\n    \n    distances = {}\n    for sub_graph in graph:\n        distances.update({node: float('inf') for node in sub_graph})\n    \n    for sub_graph in graph:\n        for neighbor, _ in sub_graph.items():\n            if neighbor not in distances:\n                distances[neighbor] = float('inf')\n\n    distances[start_node] = 0\n    pq = [(0, start_node)]\n    \n    while pq:\n        dist, current_node = heapq.heappop(pq)\n        \n        if dist > distances[current_node]:\n            continue\n        \n        for sub_graph in graph:\n            if current_node in sub_graph:\n                for neighbor, weight in sub_graph[current_node].items():\n                    new_dist = dist + weight\n                    if new_dist < distances[neighbor]:\n                        distances[neighbor] = new_dist\n                        heapq.heappush(pq, (new_dist, neighbor))\n    \n    return distances",
+        "fitness_scores": {
+            "correctness": 0.0,
+            "runtime_ms": Infinity,
+            "passed_tests": 0.0,
+            "total_tests": 11.0,
+            "highest_level_passed": -1.0
+        },
+        "generation": 0,
+        "parent_id": null,
+        "island_id": 3,
+        "errors": [
+            "Failed 11 of 11 tests at Level 0 ('default_level')."
+        ],
+        "status": "failed_evaluation",
+        "created_at": 1748260454.448332,
+        "task_id": null
+    },
+    "generic_shortest_path_problem_gen0_prog4": {
+        "id": "generic_shortest_path_problem_gen0_prog4",
+        "code": "import heapq\n\ndef solve_shortest_paths(graph, start_node):\n    if not graph:\n        if start_node is None:\n            return None\n        else:\n            return {start_node: 0}\n    \n    distances = {}\n    for node in graph:\n        distances[node] = float('inf')\n        for neighbor in graph[node]:\n            if neighbor not in distances:\n                distances[neighbor] = float('inf')\n    \n    all_nodes = set(distances.keys())\n    for node in graph:\n        for neighbor in graph[node]:\n            if neighbor not in all_nodes:\n                all_nodes.add(neighbor)\n\n    if start_node not in all_nodes:\n        all_nodes.add(start_node)\n    \n    distances[start_node] = 0\n    pq = [(0, start_node)] \n\n    while pq:\n        dist, current_node = heapq.heappop(pq)\n        \n        if dist > distances[current_node]:\n            continue\n\n        if current_node in graph:\n            for neighbor, weight in graph[current_node].items():\n                if distances[current_node] + weight < distances[neighbor]:\n                    distances[neighbor] = distances[current_node] + weight\n                    heapq.heappush(pq, (distances[neighbor], neighbor))\n                    \n    \n    if start_node not in distances:\n        distances[start_node] = 0\n        for node in all_nodes:\n            if node != start_node:\n                distances[node] = float('inf')\n            \n    result = {}\n    for node in all_nodes:\n        result[node] = distances[node]\n    \n    \n    if all(value == float('inf') for value in result.values() if value != 0 and start_node in result):\n        \n        return result if start_node in result else None\n    \n    return result",
+        "fitness_scores": {
+            "correctness": 0.7272727272727273,
+            "runtime_ms": Infinity,
+            "passed_tests": 8.0,
+            "total_tests": 11.0,
+            "highest_level_passed": -1.0
+        },
+        "generation": 0,
+        "parent_id": null,
+        "island_id": 2,
+        "errors": [
+            "Failed 3 of 11 tests at Level 0 ('default_level')."
+        ],
+        "status": "failed_evaluation",
+        "created_at": 1748260454.448695,
+        "task_id": null
+    },
+    "generic_shortest_path_problem_gen1_child0_0": {
+        "id": "generic_shortest_path_problem_gen1_child0_0",
+        "code": "import heapq\n\ndef solve_shortest_paths(graph, start_node):\n    if not graph:\n        if start_node is None:\n            return None\n        else:\n            return {start_node: 0}\n    \n    distances = {}\n    for node in set(graph.keys()).union(*[list(neighbors.keys()) for neighbors in graph.values()]):\n        distances[node] = float('inf')\n    \n    if start_node not in distances:\n        distances[start_node] = 0\n        \n    distances[start_node] = 0\n    pq = [(0, start_node)]\n\n    while pq:\n        dist, current_node = heapq.heappop(pq)\n\n        if dist > distances[current_node]:\n            continue\n\n        if current_node in graph:\n            for neighbor, weight in graph[current_node].items():\n                new_dist = dist + weight\n                if new_dist < distances[neighbor]:\n                    distances[neighbor] = new_dist\n                    heapq.heappush(pq, (new_dist, neighbor))\n                    \n        return {node: distances[node] for node in distances}",
+        "fitness_scores": {
+            "correctness": 0.2727272727272727,
+            "runtime_ms": Infinity,
+            "passed_tests": 3.0,
+            "total_tests": 11.0,
+            "highest_level_passed": -1.0
+        },
+        "generation": 1,
+        "parent_id": "generic_shortest_path_problem_gen0_prog1",
+        "island_id": 1,
+        "errors": [
+            "Failed 8 of 11 tests at Level 0 ('default_level')."
+        ],
+        "status": "failed_evaluation",
+        "created_at": 1748260456.255287,
+        "task_id": null
+    },
+    "generic_shortest_path_problem_gen1_child0_1": {
+        "id": "generic_shortest_path_problem_gen1_child0_1",
+        "code": "import heapq\n\ndef solve_shortest_paths(graph, start_node):\n    if not graph:\n        if start_node is None:\n            return None\n        else:\n            return {start_node: 0}\n    \n    distances = {}\n    for node in set(graph.keys()).union(*[list(neighbors.keys()) for neighbors in graph.values()]):\n        distances[node] = float('inf')\n    \n    if start_node not in distances:\n        distances[start_node] = 0\n        \n        distances[start_node] = 0\n    pq = [(0, start_node)]\n\n    while pq:\n        dist, current_node = heapq.heappop(pq)\n\n        if dist > distances[current_node]:\n            continue\n\n        if current_node in graph:\n            for neighbor, weight in graph[current_node].items():\n                new_dist = dist + weight\n                if new_dist < distances[neighbor]:\n                    distances[neighbor] = new_dist\n                    heapq.heappush(pq, (new_dist, neighbor))\n                    \n    return {node: (distances[node] if distances[node] != float('inf') else \"float('inf')\") for node in distances}",
+        "fitness_scores": {
+            "correctness": 0.2727272727272727,
+            "runtime_ms": Infinity,
+            "passed_tests": 3.0,
+            "total_tests": 11.0,
+            "highest_level_passed": -1.0
+        },
+        "generation": 1,
+        "parent_id": "generic_shortest_path_problem_gen0_prog1",
+        "island_id": 1,
+        "errors": [
+            "Failed 8 of 11 tests at Level 0 ('default_level')."
+        ],
+        "status": "failed_evaluation",
+        "created_at": 1748260456.560159,
+        "task_id": null
+    },
+    "generic_shortest_path_problem_gen1_child0_2": {
+        "id": "generic_shortest_path_problem_gen1_child0_2",
+        "code": "import heapq\n\ndef solve_shortest_paths(graph, start_node):\n    if not graph:\n        if start_node is None:\n            return None\n        else:\n            return {start_node: 0}\n    \n    distances = {}\n    for node in set(graph.keys()).union(*[list(neighbors.keys()) for neighbors in graph.values()]):\n        distances[node] = float('inf')\n    \n        \n    if start_node not in distances:\n        distances[start_node] = float('inf')\n        \n    distances[start_node] = 0\n    pq = [(0, start_node)]\n\n    while pq:\n        dist, current_node = heapq.heappop(pq)\n\n        if dist > distances[current_node]:\n            continue\n\n        if current_node in graph:\n            for neighbor, weight in graph[current_node].items():\n                new_dist = dist + weight\n                if new_dist < distances[neighbor]:\n                    distances[neighbor] = new_dist\n                    heapq.heappush(pq, (new_dist, neighbor))\n                    \n    return {node: (distances[node] if distances[node] != float('inf') else \"float('inf')\") for node in distances}",
+        "fitness_scores": {
+            "correctness": 1.0,
+            "runtime_ms": 0.021090818186373574,
+            "passed_tests": 11.0,
+            "total_tests": 11.0,
+            "highest_level_passed": 0.0
+        },
+        "generation": 1,
+        "parent_id": "generic_shortest_path_problem_gen0_prog1",
+        "island_id": 1,
+        "errors": [],
+        "status": "evaluated",
+        "created_at": 1748260456.869341,
+        "task_id": null
+    },
+    "generic_shortest_path_problem_gen1_child1_0": {
+        "id": "generic_shortest_path_problem_gen1_child1_0",
+        "code": "import heapq\n\ndef solve_shortest_paths(graph, start_node):\n    \"\"\"\n    Finds the shortest distances from a starting node to all other nodes in a weighted, directed graph.\n\n    Args:\n        graph (dict): A dictionary representing the graph. Keys are node identifiers, and values are dictionaries\n                      of outgoing edges (neighbor node identifiers as keys, edge weights as values).\n        start_node: The identifier of the starting node.\n\n    Returns:\n        dict: A dictionary where keys are node identifiers and values are the shortest distances from the start node.\n              Returns None if no path is found from the start node to the other nodes.\n    \"\"\"\n    distances = {}\n    for node in set(list(graph.keys()) + [neighbor for node in graph for neighbor in graph.get(node, {}).keys()]):\n        distances[node] = float('inf')\n    distances[start_node] = 0\n    pq = [(0, start_node)]  # Priority queue (distance, node)\n\n    while pq:\n        dist, u = heapq.heappop(pq)\n\n        if dist > distances[u]:\n            continue\n\n        if u in graph:\n            for v, weight in graph[u].items():\n                if distances[u] != float('inf') and distances[u] + weight < distances[v]:\n                    distances[v] = distances[u] + weight\n                    heapq.heappush(pq, (distances[v], v))\n    \n        return distances",
+        "fitness_scores": {
+            "correctness": 0.2727272727272727,
+            "runtime_ms": Infinity,
+            "passed_tests": 3.0,
+            "total_tests": 11.0,
+            "highest_level_passed": -1.0
+        },
+        "generation": 1,
+        "parent_id": "generic_shortest_path_problem_gen0_prog2",
+        "island_id": 2,
+        "errors": [
+            "Failed 8 of 11 tests at Level 0 ('default_level')."
+        ],
+        "status": "failed_evaluation",
+        "created_at": 1748260456.732625,
+        "task_id": null
+    },
+    "generic_shortest_path_problem_gen1_child1_1": {
+        "id": "generic_shortest_path_problem_gen1_child1_1",
+        "code": "import heapq\n\ndef solve_shortest_paths(graph, start_node):\n    \"\"\"\n    Finds the shortest distances from a starting node to all other nodes in a weighted, directed graph.\n\n    Args:\n        graph (dict): A dictionary representing the graph. Keys are node identifiers, and values are dictionaries\n                      of outgoing edges (neighbor node identifiers as keys, edge weights as values).\n        start_node: The identifier of the starting node.\n\n    Returns:\n        dict: A dictionary where keys are node identifiers and values are the shortest distances from the start node.\n              Returns None if no path is found from the start node to the other nodes.\n    \"\"\"\n    distances = {}\n    for node in set(list(graph.keys()) + [neighbor for node in graph for neighbor in graph.get(node, {}).keys()]):\n        distances[node] = float('inf')\n    distances[start_node] = 0\n    pq = [(0, start_node)]  # Priority queue (distance, node)\n\n    while pq:\n        dist, u = heapq.heappop(pq)\n\n        if dist > distances[u]:\n            continue\n\n        if u in graph:\n            for v, weight in graph[u].items():\n                if distances[u] != float('inf') and distances[u] + weight < distances[v]:\n                    distances[v] = distances[u] + weight\n                    heapq.heappush(pq, (distances[v], v))\n    \n        return distances",
+        "fitness_scores": {
+            "correctness": 0.2727272727272727,
+            "runtime_ms": Infinity,
+            "passed_tests": 3.0,
+            "total_tests": 11.0,
+            "highest_level_passed": -1.0
+        },
+        "generation": 1,
+        "parent_id": "generic_shortest_path_problem_gen0_prog2",
+        "island_id": 2,
+        "errors": [
+            "Failed 8 of 11 tests at Level 0 ('default_level')."
+        ],
+        "status": "failed_evaluation",
+        "created_at": 1748260456.6239371,
+        "task_id": null
+    },
+    "generic_shortest_path_problem_gen1_child1_2": {
+        "id": "generic_shortest_path_problem_gen1_child1_2",
+        "code": "import heapq\n\ndef solve_shortest_paths(graph, start_node):\n    \"\"\"\n    Finds the shortest distances from a starting node to all other nodes in a weighted, directed graph.\n\n    Args:\n        graph (dict): A dictionary representing the graph. Keys are node identifiers, and values are dictionaries\n                      of outgoing edges (neighbor node identifiers as keys, edge weights as values).\n        start_node: The identifier of the starting node.\n\n    Returns:\n        dict: A dictionary where keys are node identifiers and values are the shortest distances from the start node.\n              Returns None if no path is found from the start node to the other nodes.\n    \"\"\"\n        distances = {}\n    nodes = set(graph.keys())\n    for node in graph:\n        nodes.update(graph.get(node, {}).keys())\n    for node in nodes:\n        distances[node] = float('inf')\n    distances[start_node] = 0\n    pq = [(0, start_node)]  # Priority queue (distance, node)\n\n    while pq:\n        dist, u = heapq.heappop(pq)\n\n        if dist > distances[u]:\n            continue\n\n        if u in graph:\n            for v, weight in graph[u].items():\n                                if distances[u] + weight < distances[v]:\n                    distances[v] = distances[u] + weight\n                    heapq.heappush(pq, (distances[v], v))\n\n    return distances",
+        "fitness_scores": {
+            "correctness": 0.0,
+            "runtime_ms": Infinity,
+            "passed_tests": 0.0,
+            "total_tests": 0.0
+        },
+        "generation": 1,
+        "parent_id": "generic_shortest_path_problem_gen0_prog2",
+        "island_id": 2,
+        "errors": [
+            "SyntaxError: unexpected indent at line 16, offset 8"
+        ],
+        "status": "failed_evaluation",
+        "created_at": 1748260458.1693351,
+        "task_id": null
+    },
+    "generic_shortest_path_problem_gen2_child0_0": {
+        "id": "generic_shortest_path_problem_gen2_child0_0",
+        "code": "import heapq\n\ndef solve_shortest_paths(graph, start_node):\n        if not graph:\n        if start_node is None:\n            return {}\n        else:\n            return {start_node: 0}\n    \n    distances = {}\n    all_nodes = set(graph.keys())\n    for neighbors in graph.values():\n        all_nodes.update(neighbors.keys())\n    for node in all_nodes:\n        distances[node] = float('inf')\n    \n    distances[start_node] = 0\n    pq = [(0, start_node)]\n\n    while pq:\n        dist, current_node = heapq.heappop(pq)\n\n        if dist > distances[current_node]:\n            continue\n\n        if current_node in graph:\n            for neighbor, weight in graph[current_node].items():\n                new_dist = dist + weight\n                if new_dist < distances[neighbor]:\n                    distances[neighbor] = new_dist\n                    heapq.heappush(pq, (new_dist, neighbor))\n                    \n    return distances",
+        "fitness_scores": {
+            "correctness": 0.0,
+            "runtime_ms": Infinity,
+            "passed_tests": 0.0,
+            "total_tests": 0.0
+        },
+        "generation": 2,
+        "parent_id": "generic_shortest_path_problem_gen1_child0_2",
+        "island_id": 1,
+        "errors": [
+            "SyntaxError: expected an indented block after 'if' statement on line 4 at line 5, offset 9"
+        ],
+        "status": "failed_evaluation",
+        "created_at": 1748260462.0416598,
+        "task_id": null
+    },
+    "generic_shortest_path_problem_gen2_child0_2": {
+        "id": "generic_shortest_path_problem_gen2_child0_2",
+        "code": "import heapq\n\ndef solve_shortest_paths(graph, start_node):\n    if not graph:\n        if start_node is None:\n            return None\n        else:\n            return {start_node: 0}\n    \n    distances = {}\n    for node in set(graph.keys()).union(*[list(neighbors.keys()) for neighbors in graph.values()]):\n        distances[node] = float('inf')\n    \n        \n    if start_node not in distances:\n        distances[start_node] = float('inf')\n        \n    distances[start_node] = 0\n    pq = [(0, start_node)]\n\n    while pq:\n        dist, current_node = heapq.heappop(pq)\n\n        if dist > distances[current_node]:\n            continue\n\n        if current_node in graph:\n            for neighbor, weight in graph[current_node].items():\n                new_dist = dist + weight\n                if new_dist < distances[neighbor]:\n                    distances[neighbor] = new_dist\n                    heapq.heappush(pq, (new_dist, neighbor))\n                    \n        return {node: distances[node] for node in distances}",
+        "fitness_scores": {
+            "correctness": 0.2727272727272727,
+            "runtime_ms": Infinity,
+            "passed_tests": 3.0,
+            "total_tests": 11.0,
+            "highest_level_passed": -1.0
+        },
+        "generation": 2,
+        "parent_id": "generic_shortest_path_problem_gen1_child0_2",
+        "island_id": 1,
+        "errors": [
+            "Failed 8 of 11 tests at Level 0 ('default_level')."
+        ],
+        "status": "failed_evaluation",
+        "created_at": 1748260460.064835,
+        "task_id": null
+    },
+    "generic_shortest_path_problem_gen2_child1_0": {
+        "id": "generic_shortest_path_problem_gen2_child1_0",
+        "code": "import heapq\n\ndef solve_shortest_paths(graph, start_node):\n    if not graph:\n        if start_node is None:\n            return None\n        else:\n            return {start_node: 0}\n    \n    distances = {}\n    for node in graph:\n        distances[node] = float('inf')\n        for neighbor in graph[node]:\n            if neighbor not in distances:\n                distances[neighbor] = float('inf')\n    \n    all_nodes = set(distances.keys())\n    for node in graph:\n        for neighbor in graph[node]:\n            if neighbor not in all_nodes:\n                all_nodes.add(neighbor)\n\n        \n    if start_node not in all_nodes:\n        all_nodes.add(start_node)\n\n    distances[start_node] = 0\n    pq = [(0, start_node)]  # Priority queue: (distance, node)\n\n    while pq:\n                dist, current_node = heapq.heappop(pq)\n\n        if dist > distances[current_node]:\n            continue\n\n        # Explore neighbors of the current node\n        if current_node in graph:\n            for neighbor, weight in graph[current_node].items():\n                new_dist = dist + weight\n                if new_dist < distances[neighbor]:\n                    distances[neighbor] = new_dist\n                    heapq.heappush(pq, (new_dist, neighbor))\n\n    # Ensure all nodes have a distance, including unreachable ones\n    for node in all_nodes:\n        if node not in distances:\n            distances[node] = float('inf')  # Or some other default value\n\n    return distances",
+        "fitness_scores": {
+            "correctness": 0.0,
+            "runtime_ms": Infinity,
+            "passed_tests": 0.0,
+            "total_tests": 0.0
+        },
+        "generation": 2,
+        "parent_id": "generic_shortest_path_problem_gen0_prog4",
+        "island_id": 2,
+        "errors": [
+            "SyntaxError: unindent does not match any outer indentation level at line 33, offset 43"
+        ],
+        "status": "failed_evaluation",
+        "created_at": 1748260462.465798,
+        "task_id": null
+    },
+    "generic_shortest_path_problem_gen2_child1_1": {
+        "id": "generic_shortest_path_problem_gen2_child1_1",
+        "code": "import heapq\n\ndef solve_shortest_paths(graph, start_node):\n        if not graph:\n        if start_node is None:\n            return {}\n        else:\n            return {start_node: 0}\n\n    distances = {node: float('inf') for node in set(graph.keys()).union(n for neighbors in graph.values() for n in neighbors)}\n    distances[start_node] = 0\n    pq = [(0, start_node)]\n\n    while pq:\n        dist, current_node = heapq.heappop(pq)\n\n        if dist > distances[current_node]:\n            continue\n\n        if current_node in graph:\n            for neighbor, weight in graph[current_node].items():\n                if distances[current_node] + weight < distances[neighbor]:\n                    distances[neighbor] = distances[current_node] + weight\n                    heapq.heappush(pq, (distances[neighbor], neighbor))\n\n    return {node: dist for node, dist in distances.items()}",
+        "fitness_scores": {
+            "correctness": 0.0,
+            "runtime_ms": Infinity,
+            "passed_tests": 0.0,
+            "total_tests": 0.0
+        },
+        "generation": 2,
+        "parent_id": "generic_shortest_path_problem_gen0_prog4",
+        "island_id": 2,
+        "errors": [
+            "SyntaxError: expected an indented block after 'if' statement on line 4 at line 5, offset 9"
+        ],
+        "status": "failed_evaluation",
+        "created_at": 1748260462.877932,
+        "task_id": null
+    },
+    "generic_shortest_path_problem_gen2_child1_2": {
+        "id": "generic_shortest_path_problem_gen2_child1_2",
+        "code": "import heapq\n\ndef solve_shortest_paths(graph, start_node):\n        distances = {}\n    all_nodes = set()\n\n    for node in graph:\n        distances[node] = float('inf')\n        all_nodes.add(node)\n        for neighbor in graph[node]:\n            if neighbor not in distances:\n                distances[neighbor] = float('inf')\n                all_nodes.add(neighbor)\n    \n    if start_node is not None and start_node not in distances:\n        distances[start_node] = float('inf')\n        all_nodes.add(start_node)\n    elif start_node is None:\n        return {node: float('inf') for node in all_nodes} if all_nodes else {}\n    \n    distances[start_node] = 0\n    pq = [(0, start_node)]\n\n    while pq:\n        dist, current_node = heapq.heappop(pq)\n        \n        if dist > distances[current_node]:\n            continue\n\n        if current_node in graph:\n            for neighbor, weight in graph[current_node].items():\n                if distances[current_node] + weight < distances[neighbor]:\n                    distances[neighbor] = distances[current_node] + weight\n                    heapq.heappush(pq, (distances[neighbor], neighbor))\n                    \n    result = {}\n    for node in all_nodes:\n        result[node] = distances.get(node, float('inf'))\n\n    if start_node is not None and start_node not in result:\n        return None\n    \n    return result",
+        "fitness_scores": {
+            "correctness": 0.0,
+            "runtime_ms": Infinity,
+            "passed_tests": 0.0,
+            "total_tests": 0.0
+        },
+        "generation": 2,
+        "parent_id": "generic_shortest_path_problem_gen0_prog4",
+        "island_id": 2,
+        "errors": [
+            "SyntaxError: unindent does not match any outer indentation level at line 5, offset 22"
+        ],
+        "status": "failed_evaluation",
+        "created_at": 1748260463.5454998,
+        "task_id": null
+    }
+}

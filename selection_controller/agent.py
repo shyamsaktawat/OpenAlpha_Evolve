@@ -87,102 +87,115 @@ class SelectionControllerAgent(SelectionControllerInterface, BaseAgent):
                 logger.debug(f"Initialized Island {i} with {len(island_programs)} programs")
 
     def select_parents(self, population: List[Program], num_parents: int) -> List[Program]:
-        if settings.DEBUG:
-            logger.debug(f"Starting parent selection. Population size: {len(population)}, Number of parents to select: {num_parents}")
+        # The 'population' argument here is the global population, but selection is per-island driven.
+        logger.debug(f"Starting parent selection. Global population size: {len(population)}, Num parents to select: {num_parents}")
         
-        if not population:
-            logger.warning("Parent selection called with empty population. Returning empty list.")
-            return []
         if num_parents == 0:
             logger.info("Number of parents to select is 0. Returning empty list.")
             return []
-        if num_parents > len(population):
-            logger.warning(f"Requested {num_parents} parents, but population size is only {len(population)}. Selecting all individuals as parents.")
-            return list(population)
 
-        # Select a random island
-        island_id = random.randint(0, self.num_islands - 1)
-        island = self.islands[island_id]
-        island_programs = island.programs
+        all_potential_parents: List[Program] = []
+        parents_per_island = max(1, num_parents // self.num_islands) # Ensure at least 1 parent per island if possible
+        remaining_parents_to_select = num_parents
 
-        if not island_programs:
-            logger.warning(f"Island {island_id} is empty. Selecting from global population.")
-            island_programs = population
+        # Prioritize elites from all islands first
+        all_elites = []
+        for island_id, island in self.islands.items():
+            if not island.programs:
+                logger.warning(f"Island {island_id} is empty. Skipping for elite selection.")
+                continue
+
+            sorted_island_programs = sorted(
+                island.programs,
+                key=lambda p: (p.fitness_scores.get("correctness", 0.0), -p.fitness_scores.get("runtime_ms", float('inf')), -p.generation),
+                reverse=True
+            )
+            for i in range(min(len(sorted_island_programs), self.elitism_count)):
+                 all_elites.append(sorted_island_programs[i])
+        
+        # Deduplicate elites (in case of migration having same elite in multiple islands)
+        unique_elites = []
+        seen_elite_ids = set()
+        for elite in sorted(all_elites, key=lambda p: (p.fitness_scores.get("correctness", 0.0), -p.fitness_scores.get("runtime_ms", float('inf')), -p.generation), reverse=True):
+            if elite.id not in seen_elite_ids:
+                unique_elites.append(elite)
+                seen_elite_ids.add(elite.id)
+        
+        # Add top N unique elites directly to parents
+        selected_parents = unique_elites[:min(num_parents, len(unique_elites))]
+        remaining_parents_to_select = num_parents - len(selected_parents)
+        parent_ids_so_far = {p.id for p in selected_parents}
 
         if settings.DEBUG:
-            logger.debug(f"Selected Island {island_id} for parent selection with {len(island_programs)} programs")
+            logger.debug(f"Selected {len(selected_parents)} elite parents globally: {[p.id for p in selected_parents]}")
 
-        # Sort by correctness (higher is better), runtime (lower is better), and generation (lower/older is better)
-        sorted_population = sorted(
-            island_programs,
-            key=lambda p: (
-                p.fitness_scores.get("correctness", 0.0),  # Higher correctness preferred
-                -p.fitness_scores.get("runtime_ms", float('inf')),  # Lower runtime preferred
-                -p.generation  # Older generation preferred
-            ),
-            reverse=True
-        )
+        if remaining_parents_to_select <= 0:
+            return selected_parents
 
-        parents = []
-        elite_candidates = []
-        seen_ids_for_elitism = set()
+        # Then fill remaining slots using roulette wheel selection from each island proportionally
+        # Collect all non-elite candidates from all islands
+        all_roulette_candidates_with_island = []
+        for island_id, island in self.islands.items():
+            if not island.programs:
+                continue
+            
+            # Sort island programs to pick non-elites for roulette
+            sorted_island_programs = sorted(
+                island.programs,
+                key=lambda p: (p.fitness_scores.get("correctness", 0.0), -p.fitness_scores.get("runtime_ms", float('inf')), -p.generation),
+                reverse=True
+            )
+            for program in sorted_island_programs:
+                if program.id not in parent_ids_so_far: # Check if not already selected as an elite
+                    all_roulette_candidates_with_island.append(program)
+        
+        # Deduplicate candidates for roulette (if a program migrated and is not an elite)
+        unique_roulette_candidates = []
+        seen_roulette_ids = set()
+        for cand in all_roulette_candidates_with_island:
+            if cand.id not in parent_ids_so_far and cand.id not in seen_roulette_ids:
+                 unique_roulette_candidates.append(cand)
+                 seen_roulette_ids.add(cand.id)
 
-        # Select elite parents
-        for program in sorted_population:
-            if len(elite_candidates) < self.elitism_count:
-                if program.id not in seen_ids_for_elitism:
-                    elite_candidates.append(program)
-                    seen_ids_for_elitism.add(program.id)
-                    if settings.DEBUG:
-                        logger.debug(f"Selected elite parent: {program.id} with correctness {program.fitness_scores.get('correctness')}")
-            else:
-                break
-        parents.extend(elite_candidates)
+        if not unique_roulette_candidates:
+            logger.warning("No more unique candidates for roulette selection.")
+            return selected_parents
 
-        remaining_slots = num_parents - len(parents)
-        if remaining_slots <= 0:
-            return parents
+        # Perform roulette wheel selection on the combined pool of unique candidates
+        total_fitness_roulette = sum(p.fitness_scores.get("correctness", 0.0) + 0.0001 for p in unique_roulette_candidates) # Add small constant to allow selection of 0 fitness programs
 
-        # Roulette wheel selection for remaining parents
-        roulette_candidates = [p for p in sorted_population if p.id not in seen_ids_for_elitism]
-        if not roulette_candidates:
-            return parents
-
-        total_fitness = sum(p.fitness_scores.get("correctness", 0.0) + 0.0001 for p in roulette_candidates)
-
-        if total_fitness <= 0.0001 * len(roulette_candidates):
-            num_to_select_randomly = min(remaining_slots, len(roulette_candidates))
-            random_parents = random.sample(roulette_candidates, num_to_select_randomly)
-            parents.extend(random_parents)
-            if settings.DEBUG:
-                logger.debug(f"Selected {len(random_parents)} random parents due to low fitness")
+        if total_fitness_roulette <= 0.0001 * len(unique_roulette_candidates): # All candidates have near zero fitness
+            num_to_select_randomly = min(remaining_parents_to_select, len(unique_roulette_candidates))
+            random_parents_from_roulette = random.sample(unique_roulette_candidates, num_to_select_randomly)
+            selected_parents.extend(random_parents_from_roulette)
+            logger.debug(f"Selected {len(random_parents_from_roulette)} random parents due to low/zero total fitness in roulette pool.")
         else:
-            for _ in range(remaining_slots):
-                if not roulette_candidates:
-                    break
-                pick = random.uniform(0, total_fitness)
+            for _ in range(remaining_parents_to_select):
+                if not unique_roulette_candidates: break
+                pick = random.uniform(0, total_fitness_roulette)
                 current_sum = 0
                 chosen_parent = None
-                for program in roulette_candidates:
+                for i, program in enumerate(unique_roulette_candidates):
                     current_sum += (program.fitness_scores.get("correctness", 0.0) + 0.0001)
                     if current_sum >= pick:
                         chosen_parent = program
+                        unique_roulette_candidates.pop(i) # Remove chosen parent from further selection
+                        total_fitness_roulette -= (chosen_parent.fitness_scores.get("correctness", 0.0) + 0.0001) # Adjust total fitness
                         break
+                
                 if chosen_parent:
-                    parents.append(chosen_parent)
-                    roulette_candidates.remove(chosen_parent)
-                    if settings.DEBUG:
-                        logger.debug(f"Selected parent via roulette wheel: {chosen_parent.id} "
-                                   f"with correctness {chosen_parent.fitness_scores.get('correctness')}")
-                else:
-                    if roulette_candidates:
-                        fallback_parent = random.choice(roulette_candidates)
-                        parents.append(fallback_parent)
-                        roulette_candidates.remove(fallback_parent)
-                        if settings.DEBUG:
-                            logger.debug(f"Selected fallback parent: {fallback_parent.id} "
-                                       f"with correctness {fallback_parent.fitness_scores.get('correctness')}")
-        return parents
+                    selected_parents.append(chosen_parent)
+                    parent_ids_so_far.add(chosen_parent.id) # Track for debugging or future use
+                    logger.debug(f"Selected parent via global roulette: {chosen_parent.id} from island {chosen_parent.island_id} with correctness {chosen_parent.fitness_scores.get('correctness')}")
+                elif unique_roulette_candidates: # Fallback if pick logic fails (should not happen with correct total_fitness adjustment)
+                    fallback_parent = random.choice(unique_roulette_candidates)
+                    selected_parents.append(fallback_parent)
+                    unique_roulette_candidates.remove(fallback_parent)
+                    parent_ids_so_far.add(fallback_parent.id)
+                    logger.debug(f"Selected fallback parent via global roulette: {fallback_parent.id}")
+        
+        logger.info(f"Selected {len(selected_parents)} parents in total.")
+        return selected_parents
 
     def select_survivors(self, current_population: List[Program], offspring_population: List[Program], population_size: int) -> List[Program]:
         """
@@ -284,19 +297,40 @@ class SelectionControllerAgent(SelectionControllerInterface, BaseAgent):
             logger.debug(f"Identified {len(surviving_islands)} surviving islands: {surviving_islands}")
         
         # Get the best programs from surviving islands
-        for underperforming_id in underperforming_islands:
+        for underperforming_island_id in underperforming_islands:
+            if not surviving_islands: # Should not happen if num_islands > 1
+                logger.warning("No surviving islands to donate for migration.")
+                break
+
             # Select a random surviving island
             donor_island_id = random.choice(surviving_islands)
             donor_island = self.islands[donor_island_id]
+            recipient_island = self.islands[underperforming_island_id]
             
             # Get the best program from the donor island
-            best_program = donor_island.get_best_program()
-            if best_program:
-                # Create a new island with the best program
-                self.islands[underperforming_id] = Island(underperforming_id, [best_program])
+            best_program_from_donor = donor_island.get_best_program()
+            if best_program_from_donor:
+                # Create a deep copy or a new Program instance to avoid shared object issues if necessary,
+                # especially if the program object might be modified later independently by islands.
+                # For now, assuming Program objects are relatively immutable post-evaluation or that sharing is acceptable.
+                migrant_program = best_program_from_donor # Potentially clone this: copy.deepcopy(best_program_from_donor)
+                migrant_program.island_id = underperforming_island_id # Assign to new island
+                # Reset generation if it's a pure re-seed, or keep if it's a true 'migration' maintaining age.
+                # For this less destructive migration, let's assume it keeps its generation from the donor.
+
+                # Add to recipient island's program list, ensuring no duplicates by ID
+                if not any(p.id == migrant_program.id for p in recipient_island.programs):
+                    recipient_island.programs.append(migrant_program)
+                    if settings.DEBUG:
+                        logger.debug(f"Migrated program {migrant_program.id} (Correctness: {migrant_program.fitness_scores.get('correctness')}) "
+                                   f"from island {donor_island_id} to island {underperforming_island_id}. "
+                                   f"Recipient island size now: {len(recipient_island.programs)}")
+                else:
+                    if settings.DEBUG:
+                        logger.debug(f"Program {migrant_program.id} from donor island {donor_island_id} already exists in recipient {underperforming_island_id}. Skipped migration of this specific program.")
+            else:
                 if settings.DEBUG:
-                    logger.debug(f"Reseeded island {underperforming_id} with best program from island {donor_island_id} "
-                               f"(correctness: {best_program.fitness_scores.get('correctness')})")
+                    logger.debug(f"Donor island {donor_island_id} had no best program to migrate.")
 
     async def execute(self, action: str, **kwargs) -> Any:
         # This method is part of the BaseAgent interface.

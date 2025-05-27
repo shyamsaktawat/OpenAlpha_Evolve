@@ -24,6 +24,10 @@ LITELLM_TEMPERATURE = os.getenv("LITELLM_TEMPERATURE")
 LITELLM_TOP_P = os.getenv("LITELLM_TOP_P")
 LITELLM_TOP_K = os.getenv("LITELLM_TOP_K")
 
+# Specific model names for strategic use (can be same as LITELLM_DEFAULT_MODEL if only one is used)
+LLM_PRIMARY_MODEL = os.getenv("LLM_PRIMARY_MODEL", LITELLM_DEFAULT_MODEL)
+LLM_SECONDARY_MODEL = os.getenv("LLM_SECONDARY_MODEL", FLASH_MODEL if FLASH_MODEL else LLM_PRIMARY_MODEL)
+
 # if not PRO_API_KEY:
 #     print("Warning: PRO_API_KEY not found in .env or environment. Using a NON-FUNCTIONAL placeholder. Please create a .env file with your valid API key.")
 #     PRO_API_KEY = "Your API key"
@@ -34,6 +38,8 @@ GENERATIONS = 2
 # Threshold for switching to bug-fix prompt
 # If a program has errors and its correctness score is below this, a bug-fix prompt will be used.
 BUG_FIX_CORRECTNESS_THRESHOLD = float(os.getenv("BUG_FIX_CORRECTNESS_THRESHOLD", "0.1"))
+# Threshold for using the primary (potentially more powerful/expensive) LLM for mutation
+HIGH_FITNESS_THRESHOLD_FOR_PRIMARY_LLM = float(os.getenv("HIGH_FITNESS_THRESHOLD_FOR_PRIMARY_LLM", "0.8"))
 ELITISM_COUNT = 1
 MUTATION_RATE = 0.7
 CROSSOVER_RATE = 0.2
@@ -53,7 +59,7 @@ EVALUATION_TIMEOUT_SECONDS = 800
 DOCKER_IMAGE_NAME = os.getenv("DOCKER_IMAGE_NAME", "code-evaluator:latest")
 DOCKER_NETWORK_DISABLED = os.getenv("DOCKER_NETWORK_DISABLED", "True").lower() == "true"
 
-DATABASE_TYPE = "in_memory"
+DATABASE_TYPE = "json"
 DATABASE_PATH = "program_database.json"
 
 # Logging Configuration

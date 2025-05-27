@@ -14,17 +14,22 @@ class Program:
     errors: List[str] = field(default_factory=list)
     status: str = "unevaluated"
     created_at: float = field(default_factory=lambda: time.time())  # Track program age
+    task_id: Optional[str] = None
 
 @dataclass
 class TaskDefinition:
     id: str
     description: str                                              
-    function_name_to_evolve: Optional[str] = None                                                      
+    function_name_to_evolve: Optional[str] = None  # Can be used if evolving a single function
+    target_file_path: Optional[str] = None # Path to the file containing code to be evolved
+    evolve_blocks: Optional[List[Dict[str, Any]]] = None # Defines specific blocks within the target_file_path to evolve
+                                                        # e.g., [{'block_id': 'optimizer_logic', 'start_marker': '# EVOLVE-BLOCK-START optimizer', 'end_marker': '# EVOLVE-BLOCK-END optimizer'}]
     input_output_examples: Optional[List[Dict[str, Any]]] = None                                                    
     evaluation_criteria: Optional[Dict[str, Any]] = None                                                            
     initial_code_prompt: Optional[str] = "Provide an initial Python solution for the following problem:"
     allowed_imports: Optional[List[str]] = None
-    tests: Optional[List[Dict[str, Any]]] = None
+    tests: Optional[List[Dict[str, Any]]] = None # List of test groups. Each group is a dict, can include 'name', 'description', 'level' (for cascade), and 'test_cases'.
+    expert_knowledge: Optional[str] = None # Relevant expert knowledge, equations, or snippets
 
 class BaseAgent(ABC):
     """Base class for all agents."""
