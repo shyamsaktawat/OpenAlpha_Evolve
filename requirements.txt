@@ -29,7 +29,7 @@ typing-extensions
 # stable-baselines3
 
 # Evaluation & Sandboxing
-# pytest
+pytest
 # hypothesis
 # e2b-sdk  # For E2B sandbox
 
