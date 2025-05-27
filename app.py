@@ -10,7 +10,7 @@ import time
 import logging
 from datetime import datetime
 from dotenv import load_dotenv
-
+from gradio.themes import Ocean
                                                
 project_root = os.path.abspath(os.path.dirname(__file__))
 if project_root not in sys.path:
@@ -60,7 +60,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
                                                      
-for module in ['task_manager.agent', 'code_generator.agent', 'evaluator_agent.agent', 'database_agent.agent', 
+for module in ['task_manager.agent', 'code_generator.agent', 'evaluator_agent.agent', 'dataOcean_agent.agent', 
               'selection_controller.agent', 'prompt_designer.agent']:
     logging.getLogger(module).setLevel(logging.DEBUG)
 
@@ -268,7 +268,7 @@ def set_fib_example():
     )
 
                              
-with gr.Blocks(title="OpenAlpha_Evolve") as demo:
+with gr.Blocks(title="OpenAlpha_Evolve", theme=Ocean()) as demo:
     gr.Markdown("# 🧬 OpenAlpha_Evolve: Autonomous Algorithm Evolution")
     gr.Markdown("""
     * **Custom Tasks:** Write your own problem definition, examples, and allowed imports in the fields below.
@@ -313,24 +313,26 @@ with gr.Blocks(title="OpenAlpha_Evolve") as demo:
                 value=""
             )
             
-            with gr.Row():
-                population_size = gr.Slider(
-                    label="Population Size",
-                    minimum=2, 
-                    maximum=10, 
-                    value=3, 
-                    step=1
-                )
-                
-                generations = gr.Slider(
-                    label="Generations",
-                    minimum=1, 
-                    maximum=5, 
-                    value=2, 
-                    step=1
-                )
             
-            with gr.Row():
+            
+            with gr.Accordion("Configurations", open=False):
+                with gr.Row(elem_classes="config-row"):
+                    population_size = gr.Slider(
+                        label="Population Size",
+                        minimum=2, 
+                        maximum=10, 
+                        value=3, 
+                        step=1,
+                        
+                    )
+                    
+                    generations = gr.Slider(
+                        label="Generations",
+                        minimum=1, 
+                        maximum=5, 
+                        value=2, 
+                        step=1
+                    )
                 num_islands = gr.Slider(
                     label="Number of Islands",
                     minimum=1,
