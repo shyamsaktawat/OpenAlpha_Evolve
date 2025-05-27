@@ -367,7 +367,7 @@ print(json.dumps(final_output, default=custom_json_serializer))
         logger.info(f"Evaluating program: {program.id} for task: {task.id}")
         program.status = "evaluating"
         program.errors = []
-        program.fitness_scores = {"correctness": 0.0, "runtime_ms": float('inf')}
+        program.fitness_scores = {"correctness": 0.0, "runtime_ms": float('inf'), "passed_tests": 0.0, "total_tests": 0.0}
 
         syntax_errors = self._check_syntax(program.code)
         if syntax_errors:
@@ -379,80 +379,127 @@ print(json.dumps(final_output, default=custom_json_serializer))
 
         logger.debug(f"Syntax check passed for program {program.id}.")
 
-        if task.input_output_examples:
-            logger.debug(f"Executing program {program.id} against {len(task.input_output_examples)} test cases.")
-            execution_results, execution_error = await self._execute_code_safely(program.code, task_for_examples=task)
-            
-            if execution_error:
-                logger.warning(f"Execution error for program {program.id}: {execution_error}")
-                if f"Execution Error: {execution_error}" not in program.errors:
-                    program.errors.append(f"Execution Error: {execution_error}")
-            
-            if execution_results is None and not execution_error: # Should ideally not happen if error reporting is robust
-                 if "Execution Error: No results returned and no specific error message." not in program.errors:
-                    program.errors.append("Execution Error: No results returned and no specific error message.")
+        overall_passed_tests = 0
+        overall_total_tests = 0
+        last_successful_level_avg_runtime = float('inf')
+        highest_level_passed = -1
 
-            logger.debug(f"Execution results for program {program.id}: {execution_results}")
-            
-            num_expected_tests = len(task.input_output_examples) if task.input_output_examples else 0
-            if execution_results: # Only assess if we have results
-                correctness, passed_tests, total_tests = self._assess_correctness(execution_results, task.input_output_examples)
-                # total_tests from _assess_correctness is based on len(task.input_output_examples)
-            else: # No results, implies full failure for correctness calculation
-                correctness, passed_tests, total_tests = 0.0, 0, num_expected_tests
-            
-            program.fitness_scores["correctness"] = correctness
-            program.fitness_scores["passed_tests"] = float(passed_tests)
-            program.fitness_scores["total_tests"] = float(total_tests) # This should be num_expected_tests
-            
-            average_runtime = execution_results.get("average_runtime_ms") if execution_results else float('inf')
-            
-            # make sure average_runtime is a float
-            if not isinstance(average_runtime, float) and not isinstance(average_runtime, int):
-                average_runtime = float('inf')
-            
-            program.fitness_scores["runtime_ms"] = average_runtime
-            
-            logger.info(f"Program {program.id} correctness: {correctness:.2f} ({passed_tests}/{total_tests} tests passed), Avg Runtime: {average_runtime}ms")
-
-            if correctness < 1.0 and total_tests > 0:
-                error_msg = f"Failed {total_tests - passed_tests} out of {total_tests} test cases."
-                # Add this error only if a more specific execution error isn't already the primary one
-                if not program.errors or "Execution Error" not in program.errors[0]:
-                    if error_msg not in program.errors:
-                        program.errors.append(error_msg)
-            elif total_tests == 0 and program.fitness_scores["correctness"] < 1.0 : # E.g. if correctness was set to 0.5 due to no tests
-                 pass # No specific test failure error to add
-
-            # Final status determination
-            if program.errors:
-                program.status = "failed_evaluation"
-            elif correctness == 1.0:
-                program.status = "evaluated"
-            else: # Not 1.0 correctness, but no specific "errors" like exceptions
-                program.status = "failed_evaluation"
-                if not program.errors and total_tests > 0 : # Add generic test failure if no other error recorded
-                     program.errors.append(f"Achieved {correctness*100:.0f}% correctness but not all tests passed.")
-
-
-            return program
-        else: # No input_output_examples
-            logger.info(f"No input/output examples provided for task {task.id}. Skipping execution-based correctness check for program {program.id}.")
+        # Determine test sets to run
+        test_groups_to_run = []
+        if task.tests: # New structure with levels
+            # Sort test groups by level, defaulting level to 0 if not specified
+            sorted_test_groups = sorted(task.tests, key=lambda g: g.get('level', 0))
+            for group in sorted_test_groups:
+                test_groups_to_run.append({
+                    "name": group.get('name', f"level_{group.get('level', 0)}"),
+                    "level": group.get('level', 0),
+                    "test_cases": group.get('test_cases', [])
+                })
+        elif task.input_output_examples: # Fallback for old structure
+            logger.warning(f"Task {task.id} uses legacy 'input_output_examples'. Consider migrating to 'tests' with levels.")
+            test_groups_to_run.append({
+                "name": "default_level",
+                "level": 0,
+                "test_cases": task.input_output_examples
+            })
+        
+        if not test_groups_to_run:
+            logger.info(f"No tests or input/output examples provided for task {task.id}. Skipping execution.")
             program.fitness_scores["correctness"] = 0.5 # Default score if no tests
             program.fitness_scores["runtime_ms"] = 0.0
             program.status = "evaluated" # No tests to fail
+            return program
 
-        # This part is largely unreachable due to returns within the if/else block, but as a safeguard:
-        if not program.errors and program.status != "evaluated":
-             # If no errors but not marked evaluated (e.g. partial correctness), ensure it's failed_evaluation
-             if program.fitness_scores.get("correctness", 0.0) < 1.0:
+        for group_idx, test_group in enumerate(test_groups_to_run):
+            level_name = test_group['name']
+            current_level = test_group['level']
+            current_level_test_cases = test_group['test_cases']
+
+            if not current_level_test_cases:
+                logger.info(f"Test group '{level_name}' (Level {current_level}) has no test cases. Skipping.")
+                continue
+
+            logger.info(f"Executing program {program.id} against test group '{level_name}' (Level {current_level}) with {len(current_level_test_cases)} test cases.")
+            
+            # Create a temporary TaskDefinition subset for _execute_code_safely and _assess_correctness
+            temp_task_def_for_level = TaskDefinition(
+                id=f"{task.id}_level_{current_level}",
+                description=task.description, # Not directly used by execution, but good to have
+                function_name_to_evolve=task.function_name_to_evolve,
+                input_output_examples=current_level_test_cases, # This is the key part
+                allowed_imports=task.allowed_imports # Also important for execution context
+            )
+
+            execution_results, execution_error = await self._execute_code_safely(program.code, task_for_examples=temp_task_def_for_level)
+            
+            if execution_error:
+                logger.warning(f"Execution error for program {program.id} at level {current_level} ('{level_name}'): {execution_error}")
+                program.errors.append(f"Execution Error at Level {current_level} ('{level_name}'): {execution_error}")
                 program.status = "failed_evaluation"
-             else:
-                program.status = "evaluated" # Should be redundant
-        elif program.errors:
-            program.status = "failed_evaluation"
+                break # Stop evaluation cascade
+            
+            if execution_results is None:
+                logger.warning(f"No execution results for program {program.id} at level {current_level} ('{level_name}').")
+                program.errors.append(f"Execution Error: No results at Level {current_level} ('{level_name}').")
+                program.status = "failed_evaluation"
+                break # Stop evaluation cascade
+
+            level_correctness, level_passed_tests, level_total_tests = self._assess_correctness(execution_results, current_level_test_cases)
+            
+            overall_passed_tests += level_passed_tests
+            overall_total_tests += level_total_tests
+
+            current_level_avg_runtime = execution_results.get("average_runtime_ms", float('inf'))
+            if not isinstance(current_level_avg_runtime, (float, int)):
+                current_level_avg_runtime = float('inf')
+
+            logger.info(f"Program {program.id} Level {current_level} ('{level_name}') Correctness: {level_correctness:.2f} ({level_passed_tests}/{level_total_tests}), Avg Runtime: {current_level_avg_runtime}ms")
+
+            if level_correctness < 1.0:
+                error_msg = f"Failed {level_total_tests - level_passed_tests} of {level_total_tests} tests at Level {current_level} ('{level_name}')."
+                program.errors.append(error_msg)
+                program.status = "failed_evaluation"
+                # Update overall fitness scores with results up to this failing level
+                program.fitness_scores["correctness"] = overall_passed_tests / overall_total_tests if overall_total_tests > 0 else 0.0
+                program.fitness_scores["passed_tests"] = float(overall_passed_tests)
+                program.fitness_scores["total_tests"] = float(overall_total_tests)
+                # Runtime is tricky here. Could be avg of last successful, or sum. Let's keep last successful level's.
+                program.fitness_scores["runtime_ms"] = last_successful_level_avg_runtime 
+                break # Stop evaluation cascade
+            else:
+                highest_level_passed = current_level
+                last_successful_level_avg_runtime = current_level_avg_runtime
+                # If this is the last group and all passed, program status will be evaluated.
+                if group_idx == len(test_groups_to_run) - 1:
+                    program.status = "evaluated" 
         
-        logger.info(f"Evaluation complete for program {program.id}. Status: {program.status}, Fitness: {program.fitness_scores}")
+        # Final fitness score calculation after loop (if not broken early)
+        if overall_total_tests > 0:
+            program.fitness_scores["correctness"] = overall_passed_tests / overall_total_tests
+        elif not program.errors: # No tests run, but no syntax errors either
+            program.fitness_scores["correctness"] = 0.5 # Default for no tests executed successfully
+        # else correctness remains 0.0 from initialization if errors occurred before any tests
+        
+        program.fitness_scores["passed_tests"] = float(overall_passed_tests)
+        program.fitness_scores["total_tests"] = float(overall_total_tests)
+        program.fitness_scores["runtime_ms"] = last_successful_level_avg_runtime if highest_level_passed != -1 else float('inf')
+        program.fitness_scores["highest_level_passed"] = float(highest_level_passed)
+
+        # Consolidate status based on errors and correctness
+        if program.errors:
+            program.status = "failed_evaluation"
+        elif program.fitness_scores.get("correctness", 0.0) == 1.0 and overall_total_tests > 0:
+            program.status = "evaluated"
+        elif overall_total_tests == 0 and not program.errors: # No tests were run (e.g. all groups empty), no syntax errors
+             program.status = "evaluated" # Considered evaluated as there was nothing to fail
+             program.fitness_scores["correctness"] = 0.5 # Re-affirm default
+             program.fitness_scores["runtime_ms"] = 0.0
+        elif not program.errors : # Some tests run, but not 100% correct, and no specific execution errors
+            program.status = "failed_evaluation"
+            if f"Achieved {program.fitness_scores['correctness']*100:.0f}% correctness but not all tests passed." not in program.errors:
+                 program.errors.append(f"Achieved {program.fitness_scores['correctness']*100:.0f}% correctness but not all tests passed.")
+
+        logger.info(f"Overall evaluation complete for program {program.id}. Status: {program.status}, Fitness: {program.fitness_scores}")
         return program
 
     async def execute(self, program: Program, task: TaskDefinition) -> Program:

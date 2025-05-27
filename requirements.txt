@@ -1,6 +1,19 @@
 # Core Libraries
 litellm
 python-dotenv>=1.0.0
+PyYAML==6.0
+tiktoken
+openai
+anthropic
+google-generativeai
+gradio
+docker
+Jinja2
+pydantic
+watchdog
+termcolor
+requests
+typing-extensions
 
 # LLM Models & Frameworks
 # transformers
@@ -16,10 +29,9 @@ python-dotenv>=1.0.0
 # stable-baselines3
 
 # Evaluation & Sandboxing
-# pytest
+pytest
 # hypothesis
 # e2b-sdk  # For E2B sandbox
-# docker
 
 # Data Storage
 # psycopg2-binary  # For PostgreSQL
@@ -33,7 +45,4 @@ python-dotenv>=1.0.0
 # fastapi
 # uvicorn
 
-asyncio>=3.4.3
-uuid>=1.30
-gradio>=4.0.0
-pytest
+# For potential future use or specific agent needs (example)

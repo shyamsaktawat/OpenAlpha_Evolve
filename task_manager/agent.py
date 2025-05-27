@@ -14,10 +14,6 @@ from prompt_designer.agent import PromptDesignerAgent
 from code_generator.agent import CodeGeneratorAgent
 from evaluator_agent.agent import EvaluatorAgent
 from database_agent.agent import InMemoryDatabaseAgent
-try:
-    from database_agent.sqlite_agent import SQLiteDatabaseAgent
-except ImportError:
-    SQLiteDatabaseAgent = None  # Or handle more gracefully
 from selection_controller.agent import SelectionControllerAgent
 
 logger = logging.getLogger(__name__)
@@ -30,19 +26,9 @@ class TaskManagerAgent(TaskManagerInterface):
         self.code_generator: CodeGeneratorInterface = CodeGeneratorAgent()
         self.evaluator: EvaluatorAgentInterface = EvaluatorAgent(task_definition=self.task_definition)
         
-        if settings.DATABASE_TYPE == "sqlite":
-            if SQLiteDatabaseAgent:
-                self.database: DatabaseAgentInterface = SQLiteDatabaseAgent()
-                logger.info("Using SQLite database.")
-            else:
-                logger.error("SQLiteDatabaseAgent is not available. Falling back to InMemoryDatabaseAgent.")
-                self.database: DatabaseAgentInterface = InMemoryDatabaseAgent()
-        elif settings.DATABASE_TYPE == "in_memory":
-            self.database: DatabaseAgentInterface = InMemoryDatabaseAgent()
-            logger.info("Using in-memory database.")
-        else:
-            logger.warning(f"Unknown DATABASE_TYPE: {settings.DATABASE_TYPE}. Defaulting to in-memory database.")
-            self.database: DatabaseAgentInterface = InMemoryDatabaseAgent()
+        # Simplified database initialization:
+        self.database: DatabaseAgentInterface = InMemoryDatabaseAgent()
+        logger.info(f"Using {settings.DATABASE_TYPE} database (InMemoryDatabaseAgent).")
             
         self.selection_controller: SelectionControllerInterface = SelectionControllerAgent()
 
@@ -56,11 +42,14 @@ class TaskManagerAgent(TaskManagerInterface):
         logger.info(f"Initializing population for task: {self.task_definition.id}")
         initial_population = []
         
+        initial_model = settings.LLM_SECONDARY_MODEL # Use secondary for broad initial generation
+        logger.info(f"Using model '{initial_model}' for initial population generation.")
+
         # Generate initial programs
         tasks = []
         for i in range(self.population_size):
             initial_prompt = self.prompt_designer.design_initial_prompt()
-            tasks.append(self.code_generator.generate_code(initial_prompt, temperature=0.8))
+            tasks.append(self.code_generator.generate_code(initial_prompt, model_name=initial_model, temperature=0.8))
 
         generated_codes = await asyncio.gather(*tasks)
         for i, generated_code in enumerate(generated_codes):
@@ -173,7 +162,9 @@ class TaskManagerAgent(TaskManagerInterface):
         logger.debug(f"Generating offspring from parent {parent.id} for generation {generation_num}")
         
         prompt_type = "mutation"
-        
+        # Default to primary for bug fixes or high-fitness mutations
+        chosen_model = settings.LLM_PRIMARY_MODEL 
+
         if parent.errors and parent.fitness_scores.get("correctness", 1.0) < settings.BUG_FIX_CORRECTNESS_THRESHOLD:
             primary_error = parent.errors[0]
             execution_details = None
@@ -185,9 +176,18 @@ class TaskManagerAgent(TaskManagerInterface):
                 error_message=primary_error,
                 execution_output=execution_details
             )
-            logger.info(f"Attempting bug fix for parent {parent.id} using diff. Error: {primary_error}")
+            logger.info(f"Attempting bug fix for parent {parent.id} using diff. Model: {chosen_model}. Error: {primary_error}")
             prompt_type = "bug_fix"
+            # chosen_model remains LLM_PRIMARY_MODEL for bug fixing
         else:
+            # Decide model for mutation based on parent fitness
+            if parent.fitness_scores.get("correctness", 0.0) >= settings.HIGH_FITNESS_THRESHOLD_FOR_PRIMARY_LLM:
+                # chosen_model is already LLM_PRIMARY_MODEL
+                logger.info(f"Parent {parent.id} has high fitness, using primary model {chosen_model} for mutation.")
+            else:
+                chosen_model = settings.LLM_SECONDARY_MODEL # Use secondary for lower-fitness mutations
+                logger.info(f"Parent {parent.id} has lower fitness, using secondary model {chosen_model} for mutation.")
+
             feedback = {
                 "errors": parent.errors,
                 "correctness_score": parent.fitness_scores.get("correctness"),
@@ -196,10 +196,11 @@ class TaskManagerAgent(TaskManagerInterface):
             feedback = {k: v for k, v in feedback.items() if v is not None}
 
             mutation_prompt = self.prompt_designer.design_mutation_prompt(program=parent, evaluation_feedback=feedback)
-            logger.info(f"Attempting mutation for parent {parent.id} using diff.")
+            logger.info(f"Attempting mutation for parent {parent.id} using diff. Model: {chosen_model}")
         
         generated_code = await self.code_generator.execute(
             prompt=mutation_prompt,
+            model_name=chosen_model,
             temperature=0.75,
             output_format="diff",
             parent_code_for_diff=parent.code

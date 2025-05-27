@@ -60,6 +60,8 @@ os.test_results/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+*.db
+program_database.json
 
 # Flask stuff:
 instance/

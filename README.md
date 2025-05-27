@@ -81,20 +81,15 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
 
 ```text
 ./
-├── agents/                  # Contains the core intelligent agents responsible for different parts of the evolutionary process. Each agent is in its own subdirectory.
-│   ├── code_generator/      # Agent responsible for generating code using LLMs.
-│   ├── database_agent/      # Agent for managing the storage and retrieval of programs and their metadata.
-│   ├── evaluator_agent/     # Agent that evaluates the generated code for syntax, execution, and fitness.
-│   ├── prompt_designer/     # Agent that crafts prompts for the LLM for initial generation, mutation, and bug fixing.
-│   ├── selection_controller/  # Agent that implements the selection strategy for parent and survivor programs.
-│   ├── task_manager/        # Agent that orchestrates the overall evolutionary loop and coordinates other agents.
-│   ├── rl_finetuner/        # Placeholder for a future Reinforcement Learning Fine-Tuner agent to optimize prompts.
-│   └── monitoring_agent/    # Placeholder for a future Monitoring Agent to track and visualize the process.
+├── code_generator/      # Agent responsible for generating code using LLMs.
+├── database_agent/      # Agent for managing the storage and retrieval of programs and their metadata.
+├── evaluator_agent/     # Agent that evaluates the generated code for syntax, execution, and fitness.
+├── prompt_designer/     # Agent that crafts prompts for the LLM for initial generation, mutation, and bug fixing.
+├── selection_controller/  # Agent that implements the selection strategy for parent and survivor programs.
+├── task_manager/        # Agent that orchestrates the overall evolutionary loop and coordinates other agents.
 ├── config/                  # Holds configuration files, primarily `settings.py` for system parameters and API keys.
 ├── core/                    # Defines core data structures and interfaces, like `Program` and `TaskDefinition`.
-├── utils/                   # Contains utility functions and helper classes used across the project (currently minimal).
-├── tests/                   # Includes unit and integration tests to ensure code quality and correctness (placeholders, to be expanded).
-├── scripts/                 # Stores helper scripts for various tasks, such as generating diagrams or reports.
+├── tests/                   # Includes unit and integration tests to ensure code quality and correctness.
 ├── main.py                  # The main entry point to run the OpenAlpha_Evolve system and start an evolutionary run.
 ├── requirements.txt         # Lists all Python package dependencies required to run the project.
 ├── .env.example             # An example file showing the environment variables needed, such as API keys. Copy this to `.env` and fill in your values.
