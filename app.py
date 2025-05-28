@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from gradio.themes import Ocean
 from translations import translations
 
+
                                                
 project_root = os.path.abspath(os.path.dirname(__file__))
 if project_root not in sys.path:
