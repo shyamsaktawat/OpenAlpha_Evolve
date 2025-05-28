@@ -11,6 +11,8 @@ import logging
 from datetime import datetime
 from dotenv import load_dotenv
 from gradio.themes import Ocean
+from translations import translations
+
                                                
 project_root = os.path.abspath(os.path.dirname(__file__))
 if project_root not in sys.path:
@@ -60,7 +62,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
                                                      
-for module in ['task_manager.agent', 'code_generator.agent', 'evaluator_agent.agent', 'dataOcean_agent.agent', 
+for module in ['task_manager.agent', 'code_generator.agent', 'evaluator_agent.agent', 'database_agent.agent', 
               'selection_controller.agent', 'prompt_designer.agent']:
     logging.getLogger(module).setLevel(logging.DEBUG)
 
@@ -269,13 +271,24 @@ def set_fib_example():
 
                              
 with gr.Blocks(title="OpenAlpha_Evolve", theme=Ocean()) as demo:
-    gr.Markdown("# 🧬 OpenAlpha_Evolve: Autonomous Algorithm Evolution")
-    gr.Markdown("""
-    * **Custom Tasks:** Write your own problem definition, examples, and allowed imports in the fields below.
-    * **Multi-Model Support:** Additional language model backends coming soon.
-    * **Evolutionary Budget:** For novel, complex solutions consider using large budgets (e.g., 100+ generations and population sizes of hundreds or thousands).
-    * **Island Model:** The population is divided into islands that evolve independently, with periodic migration between them.
-    """)
+    t = translations['en']
+
+    with gr.Row():
+        with gr.Column(scale=9):
+            gr.Markdown("# 🧬 OpenAlpha_Evolve: Autonomous Algorithm Evolution")
+            gr.Markdown("""
+            * **Custom Tasks:** Write your own problem definition, examples, and allowed imports in the fields below.
+            * **Multi-Model Support:** Additional language model backends coming soon.
+            * **Evolutionary Budget:** For novel, complex solutions consider using large budgets (e.g., 100+ generations and population sizes of hundreds or thousands).
+            * **Island Model:** The population is divided into islands that evolve independently, with periodic migration between them.
+            """)
+        with gr.Column(scale=1, min_width=150):
+            language_selector = gr.Dropdown(
+                choices=[("English", "en"), ("Português", "pt")],  # Formato (label, value)
+                value='en',  # 'en' ou 'pt'
+                label=t["language_selector_label"],
+                elem_id="language_selector"
+            )
     
     with gr.Row():
         with gr.Column(scale=1):
@@ -312,18 +325,14 @@ with gr.Blocks(title="OpenAlpha_Evolve", theme=Ocean()) as demo:
                 placeholder="e.g., math",
                 value=""
             )
-            
-            
-            
             with gr.Accordion("Configurations", open=False):
-                with gr.Row(elem_classes="config-row"):
+                with gr.Row():
                     population_size = gr.Slider(
                         label="Population Size",
                         minimum=2, 
                         maximum=10, 
                         value=3, 
-                        step=1,
-                        
+                        step=1
                     )
                     
                     generations = gr.Slider(
@@ -333,29 +342,31 @@ with gr.Blocks(title="OpenAlpha_Evolve", theme=Ocean()) as demo:
                         value=2, 
                         step=1
                     )
+                
+               
                 num_islands = gr.Slider(
-                    label="Number of Islands",
-                    minimum=1,
-                    maximum=5,
-                    value=3,
-                    step=1
-                )
-                
+                        label="Number of Islands",
+                        minimum=1,
+                        maximum=5,
+                        value=3,
+                        step=1
+                    )
+                    
                 migration_frequency = gr.Slider(
-                    label="Migration Frequency (generations)",
-                    minimum=1,
-                    maximum=5,
-                    value=2,
-                    step=1
-                )
-                
+                        label="Migration Frequency (generations)",
+                        minimum=1,
+                        maximum=5,
+                        value=2,
+                        step=1
+                    )
+                    
                 migration_rate = gr.Slider(
-                    label="Migration Rate",
-                    minimum=0.1,
-                    maximum=0.5,
-                    value=0.2,
-                    step=0.1
-                )
+                        label="Migration Rate",
+                        minimum=0.1,
+                        maximum=0.5,
+                        value=0.2,
+                        step=0.1
+                    )
             
             with gr.Row():
                 example_btn = gr.Button("📘 Fibonacci Example")
@@ -394,4 +405,4 @@ with gr.Blocks(title="OpenAlpha_Evolve", theme=Ocean()) as demo:
                 
 if __name__ == "__main__":
                                                     
-    demo.launch(mcp_server=True,share=True) 
+    demo.launch(share=True) 
