@@ -12,8 +12,22 @@ from datetime import datetime
 from dotenv import load_dotenv
 from gradio.themes import Ocean
 from translations import translations
+import locale
 
+# 👇 ADICIONADO: Função para determinar o idioma inicial
+def get_initial_lang():
+    """Detecta o idioma do sistema ou usa 'en' como padrão."""
+    try:
+        system_lang = locale.getdefaultlocale()[0]
+        if system_lang:
+            lang_code = system_lang.split('_')[0]
+            if lang_code in translations:
+                return lang_code
+    except Exception:
+        pass
+    return 'en'
 
+initial_lang = get_initial_lang()
                                                
 project_root = os.path.abspath(os.path.dirname(__file__))
 if project_root not in sys.path:
@@ -272,17 +286,12 @@ def set_fib_example():
 
                              
 with gr.Blocks(title="OpenAlpha_Evolve", theme=Ocean()) as demo:
-    t = translations['en']
+    t = translations[initial_lang]
 
     with gr.Row():
         with gr.Column(scale=9):
-            gr.Markdown("# 🧬 OpenAlpha_Evolve: Autonomous Algorithm Evolution")
-            gr.Markdown("""
-            * **Custom Tasks:** Write your own problem definition, examples, and allowed imports in the fields below.
-            * **Multi-Model Support:** Additional language model backends coming soon.
-            * **Evolutionary Budget:** For novel, complex solutions consider using large budgets (e.g., 100+ generations and population sizes of hundreds or thousands).
-            * **Island Model:** The population is divided into islands that evolve independently, with periodic migration between them.
-            """)
+            gr.Markdown(t['title'])
+            gr.Markdown(t['subtitle'])
         with gr.Column(scale=1, min_width=150):
             language_selector = gr.Dropdown(
                 choices=[("English", "en"), ("Português", "pt")],  # Formato (label, value)
@@ -296,34 +305,34 @@ with gr.Blocks(title="OpenAlpha_Evolve", theme=Ocean()) as demo:
             gr.Markdown("## Task Definition")
             
             task_id = gr.Textbox(
-                label="Task ID", 
-                placeholder="e.g., fibonacci_task",
+                label=t["task_id"], 
+                placeholder=t["task_id_placeholder"],
                 value="fibonacci_task"
             )
             
             description = gr.Textbox(
-                label="Task Description", 
-                placeholder="Describe the problem clearly...",
+                label=t['description'], 
+                placeholder=t['description_placeholder'],
                 value="Write a Python function that computes the nth Fibonacci number (0-indexed), where fib(0)=0 and fib(1)=1.",
                 lines=5
             )
             
             function_name = gr.Textbox(
-                label="Function Name to Evolve", 
-                placeholder="e.g., fibonacci",
+                label=t['function_name'], 
+                placeholder=t['function_name_placeholder'],
                 value="fibonacci"
             )
             
             examples_json = gr.Code(
-                label="Input/Output Examples (JSON)",
+                label=t['examples_json'],
                 language="json",
                 value=FIB_EXAMPLES,
                 lines=10
             )
             
             allowed_imports = gr.Textbox(
-                label="Allowed Imports (comma-separated)",
-                placeholder="e.g., math",
+                label=t['allowed_imports'],
+                placeholder=t['allowed_imports_placeholder'],
                 value=""
             )
             with gr.Accordion("Configurations", open=False):
