@@ -10,7 +10,25 @@ import time
 import logging
 from datetime import datetime
 from dotenv import load_dotenv
+from gradio.themes import Ocean
+from translations import translations
+import locale
+from newTheme import DarkEvolveV2
 
+# 👇 ADICIONADO: Função para determinar o idioma inicial
+def get_initial_lang():
+    """Detecta o idioma do sistema ou usa 'en' como padrão."""
+    try:
+        system_lang = locale.getlocale()[0] or "en_US"
+        if system_lang:
+            lang_code = system_lang.split('_')[0]
+            if lang_code in translations:
+                return lang_code
+    except Exception:
+        pass
+    return 'en'
+
+initial_lang = get_initial_lang()
                                                
 project_root = os.path.abspath(os.path.dirname(__file__))
 if project_root not in sys.path:
@@ -266,103 +284,135 @@ def set_fib_example():
         FIB_EXAMPLES,
         ""
     )
+theme = DarkEvolveV2()
 
                              
-with gr.Blocks(title="OpenAlpha_Evolve") as demo:
-    gr.Markdown("# 🧬 OpenAlpha_Evolve: Autonomous Algorithm Evolution")
-    gr.Markdown("""
-    * **Custom Tasks:** Write your own problem definition, examples, and allowed imports in the fields below.
-    * **Multi-Model Support:** Additional language model backends coming soon.
-    * **Evolutionary Budget:** For novel, complex solutions consider using large budgets (e.g., 100+ generations and population sizes of hundreds or thousands).
-    * **Island Model:** The population is divided into islands that evolve independently, with periodic migration between them.
-    """)
+with gr.Blocks(title="OpenAlpha_Evolve", theme=theme, css="""
+    .mybox{
+        border: 1px solid #212534;
+        padding: 20px;
+        border-radius: 10px;
+    }
+    .form{
+        background: none;
+        border: none;
+                 box-shadow: 0 0 0 #000;
+    }
+    .block{
+        background: none;
+               box-shadow:0;
+    }
+    .botaoExemplo{
+        background-color: #121a2e;
+          border-radius: 6px;
+               }
+    .enviar{
+        background-color: #0f4fcf;
+        color: #ffffff;
+          border-radius: 6px;
+               }
+    .mySLider{
+               border: 1px solid #212534;}
+               .gradio-container {background-color: #0f121a}
+""") as demo:
+    t = translations[initial_lang]
+        
+    gr.Markdown(f"# {t['title']}")
+    gr.Markdown(t['subtitle'])  
+
+            # with gr.Column(scale=1, min_width=150):
     
     with gr.Row():
-        with gr.Column(scale=1):
-            gr.Markdown("## Task Definition")
+        with gr.Column(scale=5, elem_classes="mybox"):
+            gr.Markdown(f"## {t['task_definition']}")
             
             task_id = gr.Textbox(
-                label="Task ID", 
-                placeholder="e.g., fibonacci_task",
+                label=t["task_id"], 
+                placeholder=t["task_id_placeholder"],
                 value="fibonacci_task"
             )
             
             description = gr.Textbox(
-                label="Task Description", 
-                placeholder="Describe the problem clearly...",
-                value="Write a Python function that computes the nth Fibonacci number (0-indexed), where fib(0)=0 and fib(1)=1.",
+                label=t['description'], 
+                placeholder=t['description_placeholder'],
+                value=t['description_default_text'],
                 lines=5
             )
             
             function_name = gr.Textbox(
-                label="Function Name to Evolve", 
-                placeholder="e.g., fibonacci",
+                label=t['function_name'], 
+                placeholder=t['function_name_placeholder'],
                 value="fibonacci"
             )
             
+            allowed_imports = gr.Textbox(
+                label=t['allowed_imports'],
+                placeholder=t['allowed_imports_placeholder'],
+                value=""
+            )
             examples_json = gr.Code(
-                label="Input/Output Examples (JSON)",
+                label=t['examples_json'],
                 language="json",
                 value=FIB_EXAMPLES,
                 lines=10
             )
             
-            allowed_imports = gr.Textbox(
-                label="Allowed Imports (comma-separated)",
-                placeholder="e.g., math",
-                value=""
-            )
-            
-            with gr.Row():
-                population_size = gr.Slider(
-                    label="Population Size",
+        with gr.Column(scale=3, elem_classes="mybox"):
+            gr.Markdown(f"# {t['configurations']}")
+
+                    
+            population_size = gr.Slider(
+                    label=t['population_size'],
                     minimum=2, 
                     maximum=10, 
                     value=3, 
-                    step=1
-                )
+                    step=1,
+                    elem_classes='mySLider'
+                    )
+                    
+            generations = gr.Slider(
+                        label=t['generations'],
+                        minimum=1, 
+                        maximum=5, 
+                        value=2, 
+                        step=1
+                    )
                 
-                generations = gr.Slider(
-                    label="Generations",
-                    minimum=1, 
-                    maximum=5, 
-                    value=2, 
-                    step=1
-                )
+               
+            num_islands = gr.Slider(
+                        label=t['num_islands'],
+                        minimum=1,
+                        maximum=5,
+                        value=3,
+                        step=1
+                    )
+                    
+            migration_frequency = gr.Slider(
+                        label=t['migration_frequency'],
+                        minimum=1,
+                        maximum=5,
+                        value=2,
+                        step=1
+                    )
+                    
+            migration_rate = gr.Slider(
+                        label=t['migration_rate'],
+                        minimum=0.1,
+                        maximum=0.5,
+                        value=0.2,
+                        step=0.1
+                    ) 
+                
             
             with gr.Row():
-                num_islands = gr.Slider(
-                    label="Number of Islands",
-                    minimum=1,
-                    maximum=5,
-                    value=3,
-                    step=1
-                )
-                
-                migration_frequency = gr.Slider(
-                    label="Migration Frequency (generations)",
-                    minimum=1,
-                    maximum=5,
-                    value=2,
-                    step=1
-                )
-                
-                migration_rate = gr.Slider(
-                    label="Migration Rate",
-                    minimum=0.1,
-                    maximum=0.5,
-                    value=0.2,
-                    step=0.1
-                )
+                example_btn = gr.Button(t['example_btn'], elem_classes='botaoExemplo')
             
-            with gr.Row():
-                example_btn = gr.Button("📘 Fibonacci Example")
             
-            run_btn = gr.Button("🚀 Run Evolution", variant="primary")
         
-        with gr.Column(scale=1):
-            with gr.Tab("Results"):
-                results_text = gr.Markdown("Evolution results will appear here...")
+        with gr.Column(scale=5, elem_classes="mybox"):
+            with gr.Tab(t['results']):
+                results_text = gr.Markdown(t['results_text'])
+            run_btn = gr.Button(t['run_btn'], elem_classes='enviar', variant="primary")
             
                                                                   
     

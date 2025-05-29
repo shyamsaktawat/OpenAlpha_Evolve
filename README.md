@@ -129,7 +129,7 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
     *   **This step is essential for the application to function correctly with your API keys.** The `.env` file stores your sensitive credentials and configuration, overriding the default placeholders in `config/settings.py`.
     *   Create your personal environment file by copying the example:
         ```bash
-        cp .env_example .env
+        cp .env.example .env
         ```
 
 
