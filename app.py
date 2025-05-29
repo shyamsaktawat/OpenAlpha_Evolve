@@ -324,7 +324,7 @@ with gr.Blocks(title="OpenAlpha_Evolve", theme=theme, css="""
     
     with gr.Row():
         with gr.Column(scale=5, elem_classes="mybox"):
-            gr.Markdown("## Task Definition")
+            gr.Markdown(f"## {t['task_definition']}")
             
             task_id = gr.Textbox(
                 label=t["task_id"], 
@@ -335,7 +335,7 @@ with gr.Blocks(title="OpenAlpha_Evolve", theme=theme, css="""
             description = gr.Textbox(
                 label=t['description'], 
                 placeholder=t['description_placeholder'],
-                value="Write a Python function that computes the nth Fibonacci number (0-indexed), where fib(0)=0 and fib(1)=1.",
+                value=t['description_default_text'],
                 lines=5
             )
             
@@ -358,7 +358,7 @@ with gr.Blocks(title="OpenAlpha_Evolve", theme=theme, css="""
             )
             
         with gr.Column(scale=2, elem_classes="mybox"):
-            gr.Markdown("# Configurations")
+            gr.Markdown(f"# {t['configurations']}")
 
                     
             population_size = gr.Slider(
