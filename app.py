@@ -13,12 +13,13 @@ from dotenv import load_dotenv
 from gradio.themes import Ocean
 from translations import translations
 import locale
+from newTheme import DarkEvolveV2
 
 # 👇 ADICIONADO: Função para determinar o idioma inicial
 def get_initial_lang():
     """Detecta o idioma do sistema ou usa 'en' como padrão."""
     try:
-        system_lang = locale.getdefaultlocale()[0]
+        system_lang = locale.getlocale()[0] or "en_US"
         if system_lang:
             lang_code = system_lang.split('_')[0]
             if lang_code in translations:
@@ -283,25 +284,46 @@ def set_fib_example():
         FIB_EXAMPLES,
         ""
     )
+theme = DarkEvolveV2()
 
                              
-with gr.Blocks(title="OpenAlpha_Evolve", theme=Ocean()) as demo:
+with gr.Blocks(title="OpenAlpha_Evolve", theme=theme, css="""
+    .mybox{
+        border: 1px solid #212534;
+        padding: 20px;
+        border-radius: 10px;
+    }
+    .form{
+        background: none;
+        border: none;
+                 box-shadow: 0 0 0 #000;
+    }
+    .block{
+        background: none;
+               box-shadow:0;
+    }
+    .botaoExemplo{
+        background-color: #121a2e;
+          border-radius: 6px;
+               }
+    .enviar{
+        background-color: #0f4fcf;
+        color: #ffffff;
+          border-radius: 6px;
+               }
+    .mySLider{
+               border: 1px solid #212534;}
+               .gradio-container {background-color: #0f121a}
+""") as demo:
     t = translations[initial_lang]
+        
+    gr.Markdown(f"# {t['title']}")
+    gr.Markdown(t['subtitle'])  
 
-    with gr.Row():
-        with gr.Column(scale=9):
-            gr.Markdown(t['title'])
-            gr.Markdown(t['subtitle'])
-        with gr.Column(scale=1, min_width=150):
-            language_selector = gr.Dropdown(
-                choices=[("English", "en"), ("Português", "pt")],  # Formato (label, value)
-                value='en',  # 'en' ou 'pt'
-                label=t["language_selector_label"],
-                elem_id="language_selector"
-            )
+            # with gr.Column(scale=1, min_width=150):
     
     with gr.Row():
-        with gr.Column(scale=1):
+        with gr.Column(scale=5, elem_classes="mybox"):
             gr.Markdown("## Task Definition")
             
             task_id = gr.Textbox(
@@ -323,6 +345,11 @@ with gr.Blocks(title="OpenAlpha_Evolve", theme=Ocean()) as demo:
                 value="fibonacci"
             )
             
+            allowed_imports = gr.Textbox(
+                label=t['allowed_imports'],
+                placeholder=t['allowed_imports_placeholder'],
+                value=""
+            )
             examples_json = gr.Code(
                 label=t['examples_json'],
                 language="json",
@@ -330,23 +357,21 @@ with gr.Blocks(title="OpenAlpha_Evolve", theme=Ocean()) as demo:
                 lines=10
             )
             
-            allowed_imports = gr.Textbox(
-                label=t['allowed_imports'],
-                placeholder=t['allowed_imports_placeholder'],
-                value=""
-            )
-            with gr.Accordion("Configurations", open=False):
-                with gr.Row():
-                    population_size = gr.Slider(
-                        label="Population Size",
-                        minimum=2, 
-                        maximum=10, 
-                        value=3, 
-                        step=1
+        with gr.Column(scale=2, elem_classes="mybox"):
+            gr.Markdown("# Configurations")
+
+                    
+            population_size = gr.Slider(
+                    label=t['population_size'],
+                    minimum=2, 
+                    maximum=10, 
+                    value=3, 
+                    step=1,
+                    elem_classes='mySLider'
                     )
                     
-                    generations = gr.Slider(
-                        label="Generations",
+            generations = gr.Slider(
+                        label=t['generations'],
                         minimum=1, 
                         maximum=5, 
                         value=2, 
@@ -354,38 +379,40 @@ with gr.Blocks(title="OpenAlpha_Evolve", theme=Ocean()) as demo:
                     )
                 
                
-                num_islands = gr.Slider(
-                        label="Number of Islands",
+            num_islands = gr.Slider(
+                        label=t['num_islands'],
                         minimum=1,
                         maximum=5,
                         value=3,
                         step=1
                     )
                     
-                migration_frequency = gr.Slider(
-                        label="Migration Frequency (generations)",
+            migration_frequency = gr.Slider(
+                        label=t['migration_frequency'],
                         minimum=1,
                         maximum=5,
                         value=2,
                         step=1
                     )
                     
-                migration_rate = gr.Slider(
-                        label="Migration Rate",
+            migration_rate = gr.Slider(
+                        label=t['migration_rate'],
                         minimum=0.1,
                         maximum=0.5,
                         value=0.2,
                         step=0.1
-                    )
+                    ) 
+                
             
             with gr.Row():
-                example_btn = gr.Button("📘 Fibonacci Example")
+                example_btn = gr.Button(t['example_btn'], elem_classes='botaoExemplo')
             
-            run_btn = gr.Button("🚀 Run Evolution", variant="primary")
+            
         
-        with gr.Column(scale=1):
-            with gr.Tab("Results"):
-                results_text = gr.Markdown("Evolution results will appear here...")
+        with gr.Column(scale=5, elem_classes="mybox"):
+            with gr.Tab(t['results']):
+                results_text = gr.Markdown(t['results_text'])
+            run_btn = gr.Button(t['run_btn'], elem_classes='enviar', variant="primary")
             
                                                                   
     

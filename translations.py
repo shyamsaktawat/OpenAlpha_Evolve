@@ -28,6 +28,15 @@ translations = {
         "results": "Results",
         "results_text": "Evolution results will appear here...",
         "language_selector_label": "Language",
+        "configurations": "Configurations",
+        "population_size": "Population Size",
+        "generations": "Generations",
+        "num_islands": "Number of Islands",
+        "migration_frequency": "Migration Frequency (generations)",
+        "migration_rate": "Migration Rate",
+        "example_btn": "📘 Fibonacci Example",
+        "run_btn": "🚀 Run Evolution",
+        "results_text": "Evolution results will appear here..."
     },
     "pt": {
         "title": "🧬 OpenAlpha_Evolve: Evolução Autônoma de Algoritmos",
@@ -58,5 +67,14 @@ translations = {
         "results": "Resultados",
         "results_text": "Os resultados da evolução aparecerão aqui...",
         "language_selector_label": "Idioma",
+        "configurations": "Configurações",
+        "population_size": "Tamanho da População", 
+        "generations": "Gerações",
+        "num_islands": "Número de Ilhas",
+        "migration_frequency": "Frequência de Migração (gerações)",
+        "migration_rate": "Taxa de Migração",
+        "example_btn": "📘 Exemplo Fibonacci",
+        "run_btn": "🚀 Executar Evolução",
+        "results_text": "Os resultados da evolução aparecerão aqui..."
     }
 }
