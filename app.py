@@ -357,7 +357,7 @@ with gr.Blocks(title="OpenAlpha_Evolve", theme=theme, css="""
                 lines=10
             )
             
-        with gr.Column(scale=2, elem_classes="mybox"):
+        with gr.Column(scale=3, elem_classes="mybox"):
             gr.Markdown(f"# {t['configurations']}")
 
                     
