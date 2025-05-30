@@ -1,30 +1,47 @@
 import os
+import sys # Import sys module
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # LLM Configuration
 FLASH_API_KEY = os.getenv("FLASH_API_KEY")
+if not FLASH_API_KEY:
+    sys.stderr.write("Error: FLASH_API_KEY not found in .env or environment.\n")
+    sys.exit(1)
+
 FLASH_BASE_URL = os.getenv("FLASH_BASE_URL", None)
 FLASH_MODEL = os.getenv("FLASH_MODEL")
 
 PRO_API_KEY = os.getenv("PRO_API_KEY")
+if not PRO_API_KEY:
+    sys.stderr.write("Error: PRO_API_KEY not found in .env or environment.\n")
+    sys.exit(1)
+
 PRO_BASE_URL = os.getenv("PRO_BASE_URL", None)
 PRO_MODEL = os.getenv("PRO_MODEL")
 
 EVALUATION_API_KEY = os.getenv("EVALUATION_API_KEY")
+if not EVALUATION_API_KEY:
+    sys.stderr.write("Error: EVALUATION_API_KEY not found in .env or environment.\n")
+    sys.exit(1)
+
 EVALUATION_BASE_URL = os.getenv("EVALUATION_BASE_URL", None)
 EVALUATION_MODEL = os.getenv("EVALUATION_MODEL")
 
 # LiteLLM Configuration
-LITELLM_MAX_TOKENS = os.getenv("LITELLM_MAX_TOKENS")
-LITELLM_TEMPERATURE = os.getenv("LITELLM_TEMPERATURE")
-LITELLM_TOP_P = os.getenv("LITELLM_TOP_P")
-LITELLM_TOP_K = os.getenv("LITELLM_TOP_K")
+# Read from environment or use default values, then cast to correct type
+raw_max_tokens = os.getenv("LITELLM_MAX_TOKENS")
+LITELLM_MAX_TOKENS = int(raw_max_tokens) if raw_max_tokens else 4096
 
-if not PRO_API_KEY:
-    print("Warning: PRO_API_KEY not found in .env or environment. Using a NON-FUNCTIONAL placeholder. Please create a .env file with your valid API key.")
-    PRO_API_KEY = "Your API key"
+raw_temperature = os.getenv("LITELLM_TEMPERATURE")
+LITELLM_TEMPERATURE = float(raw_temperature) if raw_temperature else 0.7
+
+raw_top_p = os.getenv("LITELLM_TOP_P")
+LITELLM_TOP_P = float(raw_top_p) if raw_top_p else 1.0
+
+raw_top_k = os.getenv("LITELLM_TOP_K")
+LITELLM_TOP_K = int(raw_top_k) if raw_top_k else 40
 
 # Evolutionary Algorithm Settings
 POPULATION_SIZE = 5
@@ -74,6 +91,6 @@ def get_llm_model(model_type="pro"):
         return PRO_MODEL
     elif model_type == "flash":
         return FLASH_MODEL
-    return FLASH_MODEL
-
-                                 
+    elif model_type == "evaluation":
+        return EVALUATION_MODEL
+    return FLASH_MODEL  # Default fallback for unknown types
