@@ -132,19 +132,39 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
         cp .env_example .env
         ```
 
+    #### LLM Configuration
+    Google Cloud authentication (e.g., via Application Default Credentials (ADC) or service account keys pointed to by `GOOGLE_APPLICATION_CREDENTIALS`) is a supported method for using Google's LLMs.
 
-### LLM Configuration
+    To set up your environment variables for Google Cloud, you can use one of the following methods. These should be added to your `.env` file:
 
+    ```bash
+    # For Google Cloud (Vertex AI / AI Studio)
+    # Option 1: Using Application Default Credentials (ADC)
+    # Ensure you have authenticated via gcloud CLI:
+    # gcloud auth application-default login
+    # Or set the GOOGLE_APPLICATION_CREDENTIALS environment variable:
+    # GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/service-account-key.json"
 
+    # Option 2: Directly using an API Key for specific Google services (e.g., Gemini API)
+    # GEMINI_API_KEY="your_gemini_api_key"
+    ```
 
-8.  **Run OpenAlpha_Evolve!**
+    This project uses LiteLLM to interface with various LLM providers. For providers other than Google Cloud (e.g., OpenAI, Anthropic, Cohere), please refer to the [LiteLLM documentation](https://docs.litellm.ai/docs/providers) for the specific environment variables required. Common examples include:
+    ```bash
+    # OPENAI_API_KEY="your_openai_api_key"
+    # ANTHROPIC_API_KEY="your_anthropic_api_key"
+    # COHERE_API_KEY="your_cohere_api_key"
+    ```
+    Add the necessary API key variables for your chosen LLM provider(s) to your `.env` file.
+
+6.  **Run OpenAlpha_Evolve!**
     Run the example task (Dijkstra's algorithm) with:
     ```bash
     python -m main examples/shortest_path.yaml
     ```
     Watch the logs in your terminal to see the evolutionary process unfold! Log files are also saved to `alpha_evolve.log` (by default).
 
-8.  **Launch the Gradio Web Interface**
+7.  **Launch the Gradio Web Interface**
     Interact with the system via the web UI. To start the Gradio app:
     ```bash
     python app.py
@@ -170,20 +190,23 @@ function_name: "your_function_name"
 allowed_imports: ["module1", "module2"]
 
 tests:
-  - description: "Test group description"
-    name: "Test group name"
-    test_cases:
-        input: [arg1, arg2]  # List of arguments
-        output: expected_output  # Expected result
-        # Use either output or validation_func.
-        input: [arg1, arg2]
+  - description: "Test group description" # Describes a group of related tests
+    name: "Test group name" # A name for this test group
+    test_cases: # This should be a list of individual test cases
+      - input: [arg1, arg2]  # First test case
+        output: expected_output # Expected result for this input
+        # Each test case uses either 'output' for direct comparison
+        # or 'validation_func' for more complex validation.
+      - input: [arg_for_validation_func_1, arg_for_validation_func_2] # Second test case
         validation_func: |
-          def validate(output):
-              # Custom validation logic
-              return condition
+          def validate(output_from_function):
+              # Custom validation logic for this specific test case's output
+              # For example, check if output is within a certain range,
+              # or if it has specific properties.
+              return isinstance(output_from_function, bool) and output_from_function is True
 ```
 
-See the example in examples/shortest_path.yaml
+See the example in `examples/shortest_path.yaml`
 
 ### 2. Using Python Code (Legacy)
 
