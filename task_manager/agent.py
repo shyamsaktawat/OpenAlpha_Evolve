@@ -1,5 +1,7 @@
 import logging
 import asyncio
+import json
+import os
 import uuid
 from typing import List, Dict, Any, Optional
 
@@ -38,35 +40,92 @@ class TaskManagerAgent(TaskManagerInterface):
         self.num_islands = settings.NUM_ISLANDS
         self.programs_per_island = self.population_size // self.num_islands
 
+    def _load_corpus_seeds(self, count: int) -> List[str]:
+        """Load up to `count` best-program code strings from the task's corpus.
+
+        Reads data/best_corpus/<task_id>.jsonl (produced by scripts/archive_run.py),
+        which is already sorted best-first and de-duplicated by code. Returns [] when
+        the corpus is absent, empty, or unreadable, so seeding degrades gracefully to
+        fully-fresh generation for tasks that have no accumulated history yet.
+        """
+        if count <= 0:
+            return []
+        corpus_path = os.path.join(settings.BEST_CORPUS_DIR, f"{self.task_definition.id}.jsonl")
+        if not os.path.exists(corpus_path):
+            logger.info(f"No corpus to seed from at {corpus_path}; generating a fully fresh population.")
+            return []
+        seeds: List[str] = []
+        try:
+            with open(corpus_path) as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    entry = json.loads(line)
+                    code = entry.get("code")
+                    if code:
+                        seeds.append(code)
+                    if len(seeds) >= count:
+                        break
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.warning(f"Could not read corpus at {corpus_path}: {exc}. Falling back to fresh generation.")
+            return []
+        logger.info(f"Loaded {len(seeds)} seed program(s) from corpus {corpus_path}.")
+        return seeds
+
     async def initialize_population(self) -> List[Program]:
         logger.info(f"Initializing population for task: {self.task_definition.id}")
         initial_population = []
-        
-        initial_model = settings.LLM_SECONDARY_MODEL # Use secondary for broad initial generation
-        logger.info(f"Using model '{initial_model}' for initial population generation.")
 
-        # Generate initial programs
+        # Warm-start from the accumulated best corpus, if enabled and available.
+        # Always leave room for at least one freshly generated program so the
+        # search keeps exploring beyond what it already knows.
+        seed_codes: List[str] = []
+        if settings.SEED_FROM_CORPUS:
+            max_seeds = min(settings.SEED_CORPUS_COUNT, max(self.population_size - 1, 0))
+            seed_codes = self._load_corpus_seeds(max_seeds)
+
+        for i, seed_code in enumerate(seed_codes):
+            program_id = f"{self.task_definition.id}_gen0_seed{i}"
+            logger.debug(f"Seeding initial program {i+1}/{len(seed_codes)} from corpus with id {program_id}")
+            program = Program(
+                id=program_id,
+                code=seed_code,
+                generation=0,
+                status="unevaluated",
+                task_id=self.task_definition.id
+            )
+            initial_population.append(program)
+            await self.database.save_program(program)
+
+        num_fresh = self.population_size - len(seed_codes)
+        initial_model = settings.LLM_SECONDARY_MODEL # Use secondary for broad initial generation
+        logger.info(f"Using model '{initial_model}' to generate {num_fresh} fresh program(s) "
+                    f"({len(seed_codes)} seeded from corpus).")
+
+        # Generate the remaining initial programs fresh
         tasks = []
-        for i in range(self.population_size):
+        for i in range(num_fresh):
             initial_prompt = self.prompt_designer.design_initial_prompt()
             tasks.append(self.code_generator.generate_code(initial_prompt, model_name=initial_model, temperature=0.8))
 
         generated_codes = await asyncio.gather(*tasks)
         for i, generated_code in enumerate(generated_codes):
             program_id = f"{self.task_definition.id}_gen0_prog{i}"
-            logger.debug(f"Generated initial program {i+1}/{self.population_size} with id {program_id}")
+            logger.debug(f"Generated initial program {i+1}/{num_fresh} with id {program_id}")
             program = Program(
                 id=program_id,
                 code=generated_code,
                 generation=0,
-                status="unevaluated"
+                status="unevaluated",
+                task_id=self.task_definition.id
             )
             initial_population.append(program)
             await self.database.save_program(program)
 
         # Initialize islands with the initial population
         self.selection_controller.initialize_islands(initial_programs=initial_population)
-        
+
         logger.info(f"Initialized population with {len(initial_population)} programs across {self.num_islands} islands.")
         return initial_population
 
@@ -228,7 +287,8 @@ class TaskManagerAgent(TaskManagerInterface):
             generation=generation_num,
             parent_id=parent.id,
             island_id=parent.island_id,  # Inherit island ID from parent
-            status="unevaluated"
+            status="unevaluated",
+            task_id=self.task_definition.id
         )
         logger.info(f"Successfully generated offspring {offspring.id} from parent {parent.id} ({prompt_type}).")
         return offspring

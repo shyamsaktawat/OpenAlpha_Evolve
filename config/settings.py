@@ -33,8 +33,8 @@ LLM_SECONDARY_MODEL = os.getenv("LLM_SECONDARY_MODEL", FLASH_MODEL if FLASH_MODE
 #     PRO_API_KEY = "Your API key"
 
 # Evolutionary Algorithm Settings
-POPULATION_SIZE = 5
-GENERATIONS = 2
+POPULATION_SIZE = int(os.getenv("POPULATION_SIZE", "5"))
+GENERATIONS = int(os.getenv("GENERATIONS", "2"))
 # Threshold for switching to bug-fix prompt
 # If a program has errors and its correctness score is below this, a bug-fix prompt will be used.
 BUG_FIX_CORRECTNESS_THRESHOLD = float(os.getenv("BUG_FIX_CORRECTNESS_THRESHOLD", "0.1"))
@@ -43,6 +43,20 @@ HIGH_FITNESS_THRESHOLD_FOR_PRIMARY_LLM = float(os.getenv("HIGH_FITNESS_THRESHOLD
 ELITISM_COUNT = 1
 MUTATION_RATE = 0.7
 CROSSOVER_RATE = 0.2
+
+# Corpus Seeding Settings
+# When enabled, the initial population is warm-started from the accumulated
+# best-program corpus for the task (data/best_corpus/<task_id>.jsonl, produced
+# by scripts/archive_run.py) instead of generating every gen-0 program fresh.
+# Seed programs are re-evaluated like any other candidate, and the remainder of
+# the population is still generated fresh so exploration is preserved. Has no
+# effect when the corpus file is absent or empty (e.g. a brand-new task), so the
+# default is safe: unseeded tasks behave exactly as before.
+SEED_FROM_CORPUS = os.getenv("SEED_FROM_CORPUS", "True").lower() == "true"
+# Max number of corpus programs to inject as seeds (capped at POPULATION_SIZE - 1
+# so at least one fresh program is always generated).
+SEED_CORPUS_COUNT = int(os.getenv("SEED_CORPUS_COUNT", "2"))
+BEST_CORPUS_DIR = os.getenv("BEST_CORPUS_DIR", "data/best_corpus")
 
 # Island Model Settings
 NUM_ISLANDS = 4  # Number of subpopulations

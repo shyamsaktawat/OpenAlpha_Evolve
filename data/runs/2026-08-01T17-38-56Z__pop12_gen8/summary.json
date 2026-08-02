@@ -1,0 +1,72 @@
+{
+  "timestamp_utc": "2026-08-01T17-38-56Z",
+  "label": "pop12_gen8",
+  "config": "POPULATION_SIZE=12 GENERATIONS=8 (generation routed through fast secondary model)",
+  "models": {
+    "secondary": "gemini/gemini-3.5-flash-lite",
+    "primary": "gemini/gemini-3.5-flash-lite",
+    "high_fitness_threshold": "1.1"
+  },
+  "total_programs": 139,
+  "per_task": {
+    "generic_shortest_path_problem": {
+      "program_count": 16,
+      "perfect_count": 2,
+      "best_id": "generic_shortest_path_problem_gen1_child0_2",
+      "best_fitness": {
+        "correctness": 1.0,
+        "runtime_ms": 0.021090818186373574,
+        "passed_tests": 11.0,
+        "total_tests": 11.0,
+        "highest_level_passed": 0.0
+      },
+      "best_generation": 1,
+      "winner_lineage": [
+        "generic_shortest_path_problem_gen0_prog1",
+        "generic_shortest_path_problem_gen1_child0_2"
+      ]
+    },
+    "quantum_gravity_entanglement_phase_scaling": {
+      "program_count": 16,
+      "perfect_count": 6,
+      "best_id": "quantum_gravity_entanglement_phase_scaling_gen2_child0_0",
+      "best_fitness": {
+        "correctness": 1.0,
+        "runtime_ms": 0.0010684999978138876,
+        "passed_tests": 8.0,
+        "total_tests": 8.0,
+        "highest_level_passed": 0.0
+      },
+      "best_generation": 2,
+      "winner_lineage": [
+        "quantum_gravity_entanglement_phase_scaling_gen0_prog0",
+        "quantum_gravity_entanglement_phase_scaling_gen1_child0_0",
+        "quantum_gravity_entanglement_phase_scaling_gen2_child0_0"
+      ]
+    },
+    "classical_gravity_entanglement_wick_derivation": {
+      "program_count": 107,
+      "perfect_count": 57,
+      "best_id": "classical_gravity_entanglement_wick_derivation_gen7_child5_0",
+      "best_fitness": {
+        "correctness": 1.0,
+        "runtime_ms": 6.6548093999927005,
+        "passed_tests": 5.0,
+        "total_tests": 5.0,
+        "highest_level_passed": 0.0
+      },
+      "best_generation": 7,
+      "winner_lineage": [
+        "classical_gravity_entanglement_wick_derivation_gen0_prog2",
+        "classical_gravity_entanglement_wick_derivation_gen1_child1_1",
+        "classical_gravity_entanglement_wick_derivation_gen7_child5_0"
+      ]
+    }
+  },
+  "best_corpus_sizes": {
+    "generic_shortest_path_problem": 2,
+    "quantum_gravity_entanglement_phase_scaling": 6,
+    "classical_gravity_entanglement_wick_derivation": 53
+  },
+  "source_db": "program_database.json"
+}

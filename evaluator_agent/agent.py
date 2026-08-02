@@ -331,11 +331,17 @@ print(json.dumps(final_output, default=custom_json_serializer))
                         validate_func = namespace.get("validate")
                         if validate_func and callable(validate_func):
                             # Revert: Only pass the actual output to the validation function
-                            if validate_func(actual):
+                            validation_result = validate_func(actual)
+                            # Only an explicit True counts as a pass. A validation
+                            # function may return a descriptive string to explain a
+                            # failure (as examples/circle_packing.yaml does); such a
+                            # string is truthy, so a plain truthiness check here would
+                            # silently score every failure as a pass.
+                            if validation_result is True:
                                 passed_tests += 1
                                 logger.debug(f"Test case {i}: Validation function returned True.")
                             else:
-                                logger.debug(f"Test case {i}: Validation function returned False.")
+                                logger.debug(f"Test case {i}: Validation function failed: {validation_result!r}")
                         else:
                             logger.warning(f"Validation function not found or not callable in test case {i}")
                     except Exception as e:

@@ -1,0 +1,197 @@
+# Synthetic numerical-scaling benchmark. The "classical_qft" and
+# "post_newtonian" formulas below are a TOY model inspired loosely by real
+# physics vocabulary (Dyson-series perturbation theory, Lense-Thirring frame
+# dragging, unitarity) — they are illustrative starting points for exercising
+# the evolutionary search, not a validated derivation of real quantum-gravity
+# phenomenology. Treat the numeric output as a synthetic "phase" signal to be
+# optimized, not as a physically verified quantity.
+#
+# Note on the tests below: this framework's validation_func only ever
+# receives the single output of one function call (see evaluator_agent/agent.py),
+# not the inputs that produced it or any other call's output. So each
+# validate() independently recomputes an analytic reference value for its own
+# known (mass, separation, time, method) and checks the evolved output lands
+# within a generous order-of-magnitude band of that reference. This can catch
+# gross errors (NaN, wrong method branch, ignoring an argument) but cannot
+# strictly enforce a scaling trend or a "maximize divergence between methods"
+# objective across separate calls — that part of the goal is intentionally
+# left as guidance for the LLM in task_description, not something the fixed
+# test suite scores directly.
+task_id: "quantum_gravity_entanglement_phase_scaling"
+task_description: |
+  Evolve a Python function that models a synthetic "entanglement phase" for
+  two competing toy regimes and maximizes how clearly they can be told apart
+  numerically, while keeping every output physically sane (finite).
+
+  Signature: calculate_entanglement_phase(mass, separation, time, method)
+    - mass: float, kilograms, >= 0
+    - separation: float, meters, > 0
+    - time: float, seconds, > 0
+    - method: str, either "classical_qft" or "post_newtonian"
+    - returns: a single float, the synthetic phase for the requested method
+
+  The two toy regimes:
+    1. "classical_qft" — a higher-order perturbative-style term that should
+       grow with mass and time and fall off with separation (roughly as
+       1/separation^2).
+    2. "post_newtonian" — a frame-dragging-style term that should grow with
+       mass and time and fall off more steeply with separation (roughly as
+       1/separation^3) than the classical_qft term.
+
+  Goals for the evolved function, in priority order:
+    1. Never return NaN, +/-Inf, or a complex number for any valid input
+       (a toy stand-in for "the model must stay well-defined").
+    2. mass == 0 must yield a phase of (approximately) 0 for both methods.
+    3. Preserve the qualitative scaling behavior described above.
+    4. Maximize the measurable divergence (absolute or relative difference)
+       between the two methods' outputs at shared (mass, separation, time)
+       inputs — the point of the exercise is to make the two regimes as
+       numerically distinguishable as possible without breaking constraints
+       1-3. (This is a narrative objective for the search to pursue; the
+       fixed test suite below can only check order-of-magnitude sanity and
+       rough trend per call, not this objective directly.)
+
+function_name: "calculate_entanglement_phase"
+allowed_imports: ["numpy", "math"]
+
+expert_knowledge: |
+  This is a TOY benchmark, not verified physics. As a starting point/hint
+  only, here is one illustrative reference implementation using standard
+  physical constants (G = gravitational constant, hbar = reduced Planck
+  constant) that already satisfies the basic constraints above and can be
+  refined/mutated to increase the divergence between the two methods:
+
+  import numpy as np
+
+  def calculate_entanglement_phase(mass, separation, time, method="post_newtonian"):
+      G = 6.67430e-11
+      hbar = 1.054571817e-34
+
+      if method == "classical_qft":
+          # Toy 4th-order-perturbation-style scaling: ~ G^2 * m^3 * t / (hbar * r^2)
+          phase = (G**2 * mass**3 * time) / (hbar * separation**2)
+      elif method == "post_newtonian":
+          # Toy Lense-Thirring-style scaling: ~ G * J * S * t / (hbar * r^3)
+          angular_momentum = mass * 1.0
+          spin = 0.5
+          phase = (G * angular_momentum * spin * time) / (hbar * separation**3)
+      else:
+          raise ValueError(f"Unknown method: {method}")
+
+      return phase
+
+  Note: at very small separations (e.g. micron scale) this reference formula
+  already produces extremely large post_newtonian values (~1e29 for
+  mass=1e-12 kg, separation=1e-6 m) — that's expected for this toy formula,
+  not a bug in the tests below. Ideas to explore: reshaping the algebraic
+  dependence to widen the gap between the two methods (constraint 4) without
+  violating constraints 1-3, or adding a saturation/cutoff so the function
+  stays well-behaved across an even wider input range.
+
+tests:
+  - description: "mass = 0 must yield (approximately) zero phase for both methods"
+    name: "zero_mass_test"
+    test_cases:
+      - input: [0.0, 1.0e-5, 1.0, "classical_qft"]
+        validation_func: |
+          def validate(output):
+              if not isinstance(output, (int, float)) or isinstance(output, bool):
+                  return f"Expected a real number, got {type(output)}"
+              if output != output or output in (float('inf'), float('-inf')):
+                  return "Output must be finite (NaN/Inf not allowed)."
+              return abs(output) < 1e-9 or f"Expected ~0 phase for mass=0, got {output}"
+      - input: [0.0, 1.0e-5, 1.0, "post_newtonian"]
+        validation_func: |
+          def validate(output):
+              if not isinstance(output, (int, float)) or isinstance(output, bool):
+                  return f"Expected a real number, got {type(output)}"
+              if output != output or output in (float('inf'), float('-inf')):
+                  return "Output must be finite (NaN/Inf not allowed)."
+              return abs(output) < 1e-9 or f"Expected ~0 phase for mass=0, got {output}"
+
+  - description: "Order-of-magnitude sanity check anchored to the reference formula, per method"
+    name: "order_of_magnitude_test"
+    test_cases:
+      - input: [1.0e-12, 1.0e-6, 1.0, "classical_qft"]
+        validation_func: |
+          def validate(output):
+              if not isinstance(output, (int, float)) or isinstance(output, bool):
+                  return f"Expected a real number, got {type(output)}"
+              if output != output or output in (float('inf'), float('-inf')):
+                  return "Output must be finite (NaN/Inf not allowed)."
+              G, hbar = 6.67430e-11, 1.054571817e-34
+              mass, separation, time = 1.0e-12, 1.0e-6, 1.0
+              reference = (G**2 * mass**3 * time) / (hbar * separation**2)
+              ratio = output / reference if reference else float('inf')
+              return (1e-3 <= ratio <= 1e3) or f"Output {output} is not within 3 orders of magnitude of the classical_qft reference scale ({reference})."
+      - input: [1.0e-12, 1.0e-6, 1.0, "post_newtonian"]
+        validation_func: |
+          def validate(output):
+              if not isinstance(output, (int, float)) or isinstance(output, bool):
+                  return f"Expected a real number, got {type(output)}"
+              if output != output or output in (float('inf'), float('-inf')):
+                  return "Output must be finite (NaN/Inf not allowed)."
+              G, hbar = 6.67430e-11, 1.054571817e-34
+              mass, separation, time = 1.0e-12, 1.0e-6, 1.0
+              angular_momentum, spin = mass * 1.0, 0.5
+              reference = (G * angular_momentum * spin * time) / (hbar * separation**3)
+              ratio = output / reference if reference else float('inf')
+              return (1e-3 <= ratio <= 1e3) or f"Output {output} is not within 3 orders of magnitude of the post_newtonian reference scale ({reference})."
+
+  - description: "post_newtonian should fall off with separation, roughly tracking a 1/r^3 trend"
+    name: "separation_scaling_test"
+    test_cases:
+      - input: [1.0e-12, 1.0e-6, 1.0, "post_newtonian"]
+        validation_func: |
+          def validate(output):
+              if not isinstance(output, (int, float)) or isinstance(output, bool):
+                  return f"Expected a real number, got {type(output)}"
+              if output != output or output in (float('inf'), float('-inf')):
+                  return "Output must be finite (NaN/Inf not allowed)."
+              G, hbar = 6.67430e-11, 1.054571817e-34
+              mass, separation, time = 1.0e-12, 1.0e-6, 1.0
+              angular_momentum, spin = mass * 1.0, 0.5
+              reference = (G * angular_momentum * spin * time) / (hbar * separation**3)
+              ratio = output / reference if reference else float('inf')
+              return (1e-3 <= ratio <= 1e3) or f"Output {output} is not within 3 orders of magnitude of the reference scale at this separation ({reference})."
+      - input: [1.0e-12, 2.0e-6, 1.0, "post_newtonian"]
+        validation_func: |
+          def validate(output):
+              if not isinstance(output, (int, float)) or isinstance(output, bool):
+                  return f"Expected a real number, got {type(output)}"
+              if output != output or output in (float('inf'), float('-inf')):
+                  return "Output must be finite (NaN/Inf not allowed)."
+              G, hbar = 6.67430e-11, 1.054571817e-34
+              mass, separation, time = 1.0e-12, 2.0e-6, 1.0
+              angular_momentum, spin = mass * 1.0, 0.5
+              reference = (G * angular_momentum * spin * time) / (hbar * separation**3)
+              ratio = output / reference if reference else float('inf')
+              return (1e-3 <= ratio <= 1e3) or f"Output {output} is not within 3 orders of magnitude of the reference scale at 2x separation ({reference})."
+
+  - description: "classical_qft should grow with time, roughly tracking a linear trend"
+    name: "time_scaling_test"
+    test_cases:
+      - input: [1.0e-12, 1.0e-6, 1.0, "classical_qft"]
+        validation_func: |
+          def validate(output):
+              if not isinstance(output, (int, float)) or isinstance(output, bool):
+                  return f"Expected a real number, got {type(output)}"
+              if output != output or output in (float('inf'), float('-inf')):
+                  return "Output must be finite (NaN/Inf not allowed)."
+              G, hbar = 6.67430e-11, 1.054571817e-34
+              mass, separation, time = 1.0e-12, 1.0e-6, 1.0
+              reference = (G**2 * mass**3 * time) / (hbar * separation**2)
+              ratio = output / reference if reference else float('inf')
+              return (1e-3 <= ratio <= 1e3) or f"Output {output} is not within 3 orders of magnitude of the reference scale at t=1.0 ({reference})."
+      - input: [1.0e-12, 1.0e-6, 2.0, "classical_qft"]
+        validation_func: |
+          def validate(output):
+              if not isinstance(output, (int, float)) or isinstance(output, bool):
+                  return f"Expected a real number, got {type(output)}"
+              if output != output or output in (float('inf'), float('-inf')):
+                  return "Output must be finite (NaN/Inf not allowed)."
+              G, hbar = 6.67430e-11, 1.054571817e-34
+              mass, separation, time = 1.0e-12, 1.0e-6, 2.0
+              reference = (G**2 * mass**3 * time) / (hbar * separation**2)
+              ratio = output / reference if reference else float('inf')
+              return (1e-3 <= ratio <= 1e3) or f"Output {output} is not within 3 orders of magnitude of the reference scale at t=2.0 ({reference})."

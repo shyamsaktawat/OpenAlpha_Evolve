@@ -28,7 +28,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def load_task_from_yaml(yaml_path: str) -> tuple[list, str, str, str, list]:
+def load_task_from_yaml(yaml_path: str) -> tuple[list, str, str, str, list, str]:
     """Load task configuration and test cases from a YAML file."""
     try:
         with open(yaml_path, 'r') as f:
@@ -38,7 +38,8 @@ def load_task_from_yaml(yaml_path: str) -> tuple[list, str, str, str, list]:
             task_description = data.get('task_description')
             function_name = data.get('function_name')
             allowed_imports = data.get('allowed_imports', [])
-            
+            expert_knowledge = data.get('expert_knowledge')
+
             # Convert test cases from YAML format to input_output_examples format
             input_output_examples = []
             for test_group in data.get('tests', []):
@@ -53,11 +54,11 @@ def load_task_from_yaml(yaml_path: str) -> tuple[list, str, str, str, list]:
                             'input': test_case['input'],
                             'validation_func': test_case['validation_func']
                         })
-            
-            return input_output_examples, task_id, task_description, function_name, allowed_imports
+
+            return input_output_examples, task_id, task_description, function_name, allowed_imports, expert_knowledge
     except Exception as e:
         logger.error(f"Error loading task from YAML: {e}")
-        return [], "", "", "", []
+        return [], "", "", "", [], None
 
 async def main():
     parser = argparse.ArgumentParser(description="Run OpenAlpha_Evolve with a specified YAML configuration file.")
@@ -69,8 +70,8 @@ async def main():
     logger.info(f"Configuration: Population Size={settings.POPULATION_SIZE}, Generations={settings.GENERATIONS}")
 
     # Load task configuration and test cases from YAML file
-    test_cases, task_id, task_description, function_name, allowed_imports = load_task_from_yaml(yaml_path)
-    
+    test_cases, task_id, task_description, function_name, allowed_imports, expert_knowledge = load_task_from_yaml(yaml_path)
+
     if not test_cases or not task_id or not task_description or not function_name:
         logger.error("Missing required task configuration in YAML file. Exiting.")
         return
@@ -80,7 +81,8 @@ async def main():
         description=task_description,
         function_name_to_evolve=function_name,
         input_output_examples=test_cases,
-        allowed_imports=allowed_imports
+        allowed_imports=allowed_imports,
+        expert_knowledge=expert_knowledge
     )
 
     task_manager = TaskManagerAgent(

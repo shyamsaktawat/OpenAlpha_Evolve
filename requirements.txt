@@ -4,6 +4,7 @@ python-dotenv>=1.0.0
 PyYAML==6.0
 tiktoken
 openai
+sympy
 anthropic
 google-generativeai
 gradio

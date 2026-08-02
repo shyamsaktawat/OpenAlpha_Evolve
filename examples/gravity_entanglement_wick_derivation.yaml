@@ -1,0 +1,277 @@
+# Real (not toy) physics verification task, tied to an active literature
+# dispute: Aziz & Howl, Nature 646:813-817 (2025) / arXiv:2510.19714, vs.
+# Gundhi, Infantino & Bassi, arXiv:2604.19696 (2026), on whether classical
+# (unquantized) gravity can entangle two massive objects each in a
+# two-branch spatial superposition.
+#
+# IMPORTANT SCOPE NOTE: the validation_func checks below encode NECESSARY
+# consistency constraints proven directly (see
+# physics_verification/gie_dispute_checks.py, and its tests) -- e.g. "a
+# transition-amplitude matrix built by summing correctly over all initial
+# branches must be an exact outer product, for ANY coupling kernel V_ij"
+# is a theorem, true regardless of the physics. These checks are NOT
+# sufficient to guarantee the evolved derivation is the physically correct
+# Wick contraction of H_I -- e.g. a trivial/degenerate V_ij could pass them
+# without being the real answer. Passing this task's tests is corroborating
+# evidence that a candidate derivation is internally self-consistent with
+# both papers' stated results, not proof that it is the correct physics.
+# Treat all output as a technical audit for expert review.
+task_id: "classical_gravity_entanglement_wick_derivation"
+task_description: |
+  Symbolically perform (using sympy) the 4th-order Dyson series Wick
+  contraction implied by the non-relativistic interaction Hamiltonian
+
+      H_I = (4/c^2) * integral(d^3x, Phi(x) * [pi(x)pi_dagger(x)
+             - (m^2 c^2 / 2 hbar^2) phi_dagger(x)phi(x)])
+
+  for two massive objects, each a superposition of two localized wave
+  packets (branches L/R), interacting only via the classical potential Phi
+  sourced by the mean quantum matter density (semiclassical/Moller-Rosenfeld
+  coupling): grad^2 Phi(x) = (4*pi*G/c^2) * <psi| T_00(x) |psi>.
+
+  Implement calculate_wick_contraction(mode="diagonal" | "full_sum")
+  representing the transition-amplitude matrix beta_ij at 4th order in the
+  Dyson series, built from a coupling kernel V_ij (2x2 sympy Matrix of free
+  symbols V_LL, V_LR, V_RL, V_RR) and an overall prefactor Lambda*t**2
+  (Lambda, t sympy symbols).
+
+  RETURN FORMAT (important): return a 2x2 nested Python list of STRINGS,
+  where each string is the str() of the corresponding sympy expression --
+  e.g. [["Lambda*t**2*V_LL**2", "..."], ["...", "..."]]. Do NOT return a
+  sympy Matrix object directly: results are marshalled out of the sandbox
+  as JSON, and sympy objects are not JSON-serializable (returning one makes
+  the program fail evaluation outright). Compute with sympy internally, then
+  stringify each entry on the way out; the checks re-parse them with
+  sympy.sympify.
+
+  The two modes:
+
+    - mode="diagonal": the Aziz-Howl construction, fixing the initial
+      branch pair equal to the final one (beta_ij;ij, no sum over initial
+      branches).
+    - mode="full_sum": the Gundhi et al. construction, correctly summing
+      the transition amplitude over ALL initial branch pairs (m,k), as
+      required by linearity of QM applied to the superposed initial state
+      |Psi(0)> = (1/2) sum_{m,k} |N>_1m |N>_2k.
+
+  Your derivation must be built from first principles via the Wick
+  contraction bookkeeping (enumerate the 4th-order Dyson term's Wick
+  contractions of H_I(tau_1)...H_I(tau_4), separate "crossing" diagrams
+  where virtual matter propagates between the two objects from
+  "non-crossing" diagrams that only contribute local phases), not simply
+  hard-coded to satisfy the tests below.
+
+function_name: "calculate_wick_contraction"
+allowed_imports: ["sympy"]
+
+expert_knowledge: |
+  This is a real, disputed open question in the quantum-gravity-experiment
+  literature (not settled physics) -- treat any output as a first-pass
+  technical audit for expert review, per both papers' own framing.
+
+  Known, uncontested 2nd-order result (both papers agree): the 2nd-order
+  Dyson term factorizes exactly as beta^(2)_ij = -phi_1i * phi_2j (a pure
+  product of single-object phases) -- always separable. Your 4th-order
+  derivation should be checkable against this limit structurally (i.e. at
+  leading order in the coupling it should not spontaneously break this
+  separability).
+
+  Aziz-Howl's claimed 4th-order diagonal result (their Eq. 84, near-field
+  limit): beta^d_ij ~ kappa/d_ij^2 with kappa := [(6/25) i G^2 M^3 R t /
+  hbar^3]^2 (per-object mass M, radius R). Their footnote 68 claims there
+  are no other diagrams to combine with at 4th order or lower to restore
+  separability.
+
+  Gundhi et al.'s claimed correction (their Eq. 30-33): once the FULL sum
+  over initial branches is correctly included (i.e. footnote 68's claim is
+  disputed -- there ARE other amplitudes, and they combine),
+  beta^(4)_ij;mk ~ Lambda*t^2*V_ik*V_mj exactly, where V_ij := i *
+  integral(d^3x d^3y, Phi(x)Phi(y) theta_1i(x) theta_2j(y) / |x-y|) and
+  Lambda := m^6 N^2 / (4 pi^2 hbar^6 V^2). Summing over initial branches
+  (m,k) turns this into an exact outer product in (i,j), hence always
+  separable, for ANY V_ij values -- this is a theorem, not an
+  approximation (verified directly: see physics_verification/gie_dispute_checks.py).
+
+  V_ij is NOT itself generically a rank-1/outer-product matrix (it is a
+  genuine two-index Coulomb-like coupling kernel between both objects'
+  branch positions), which is why the diagonal-only construction (elementwise
+  V_ij^2) is generically entangled while the full-sum construction
+  (row-sum times column-sum) is always separable -- these are NOT in
+  tension; they are different, non-equivalent constructions from the same
+  V_ij, and only one of them (full-sum) is required by correctly applying
+  QM to the superposed initial state.
+
+tests:
+  - description: "Diagonal (Aziz-Howl) construction is generically entangled for arbitrary V_ij"
+    name: "diagonal_generically_entangled"
+    test_cases:
+      - input: ["diagonal"]
+        validation_func: |
+          def validate(matrix):
+              import sympy as sp
+              # Results cross the sandbox boundary as JSON, so the candidate
+              # returns a 2x2 nested list of sympy-expression strings.
+              if not isinstance(matrix, (list, tuple)) or len(matrix) != 2:
+                  return f"Expected a 2x2 nested list of expression strings, got {type(matrix)}"
+              for row in matrix:
+                  if not isinstance(row, (list, tuple)) or len(row) != 2:
+                      return f"Expected each row to have 2 entries, got {row!r}"
+              # Pin the symbol namespace: bare sympify() would resolve "Lambda"
+              # to the sympy.Lambda CLASS, not a symbol, and blow up.
+              _syms = {n: sp.Symbol(n) for n in
+                       ("Lambda", "t", "V_LL", "V_LR", "V_RL", "V_RR")}
+              try:
+                  M = sp.Matrix([[sp.sympify(str(e), locals=_syms) for e in row]
+                                 for row in matrix])
+              except Exception as exc:
+                  return f"Could not parse entries as sympy expressions: {exc}"
+              det = sp.simplify(M.det())
+              # bool() is required: sympy comparisons return sympy Booleans,
+              # and the evaluator only counts an explicit Python True as a pass.
+              if bool(det != 0):
+                  return True
+              return f"Diagonal construction should be generically entangled (det != 0 for generic V_ij), got det={det}"
+
+  - description: "Full-sum (Gundhi) construction is ALWAYS separable -- a hard constraint for any V_ij"
+    name: "full_sum_always_separable"
+    test_cases:
+      - input: ["full_sum"]
+        validation_func: |
+          def validate(matrix):
+              import sympy as sp
+              # Results cross the sandbox boundary as JSON, so the candidate
+              # returns a 2x2 nested list of sympy-expression strings.
+              if not isinstance(matrix, (list, tuple)) or len(matrix) != 2:
+                  return f"Expected a 2x2 nested list of expression strings, got {type(matrix)}"
+              for row in matrix:
+                  if not isinstance(row, (list, tuple)) or len(row) != 2:
+                      return f"Expected each row to have 2 entries, got {row!r}"
+              # Pin the symbol namespace: bare sympify() would resolve "Lambda"
+              # to the sympy.Lambda CLASS, not a symbol, and blow up.
+              _syms = {n: sp.Symbol(n) for n in
+                       ("Lambda", "t", "V_LL", "V_LR", "V_RL", "V_RR")}
+              try:
+                  M = sp.Matrix([[sp.sympify(str(e), locals=_syms) for e in row]
+                                 for row in matrix])
+              except Exception as exc:
+                  return f"Could not parse entries as sympy expressions: {exc}"
+              det = sp.simplify(M.det())
+              # bool() is required: sympy comparisons return sympy Booleans,
+              # and the evaluator only counts an explicit Python True as a pass.
+              if bool(det == 0):
+                  return True
+              return f"Full-sum construction must be exactly separable (det == 0) for ANY V_ij -- this is a theorem, not approximate. Got det={det}"
+
+  - description: "Full-sum construction must be an exact outer product (rank <= 1), not just accidentally zero determinant"
+    name: "full_sum_is_outer_product"
+    test_cases:
+      - input: ["full_sum"]
+        validation_func: |
+          def validate(matrix):
+              import sympy as sp
+              # Results cross the sandbox boundary as JSON, so the candidate
+              # returns a 2x2 nested list of sympy-expression strings.
+              if not isinstance(matrix, (list, tuple)) or len(matrix) != 2:
+                  return f"Expected a 2x2 nested list of expression strings, got {type(matrix)}"
+              for row in matrix:
+                  if not isinstance(row, (list, tuple)) or len(row) != 2:
+                      return f"Expected each row to have 2 entries, got {row!r}"
+              # Pin the symbol namespace: bare sympify() would resolve "Lambda"
+              # to the sympy.Lambda CLASS, not a symbol, and blow up.
+              _syms = {n: sp.Symbol(n) for n in
+                       ("Lambda", "t", "V_LL", "V_LR", "V_RL", "V_RR")}
+              try:
+                  M = sp.Matrix([[sp.sympify(str(e), locals=_syms) for e in row]
+                                 for row in matrix])
+              except Exception as exc:
+                  return f"Could not parse entries as sympy expressions: {exc}"
+              rank = M.rank()
+              if int(rank) <= 1:
+                  return True
+              return f"Full-sum construction must have rank <= 1 (exact outer product), got rank={rank}"
+
+  - description: "Full-sum construction carries ZERO entanglement entropy (zero bits of shared information between the objects)"
+    name: "full_sum_zero_entanglement_entropy"
+    test_cases:
+      - input: ["full_sum"]
+        validation_func: |
+          def validate(matrix):
+              import sympy as sp
+              # Read beta_ij as the amplitude matrix of the bipartite pure state
+              # sum_ij beta_ij |i>_1 |j>_2; the entanglement of the two objects is
+              # the von Neumann entropy of rho_1 = beta beta^dagger / Tr(...).
+              # S == 0 bits <=> rank(beta) <= 1 <=> separable product state.
+              if not isinstance(matrix, (list, tuple)) or len(matrix) != 2:
+                  return f"Expected a 2x2 nested list of expression strings, got {type(matrix)}"
+              for row in matrix:
+                  if not isinstance(row, (list, tuple)) or len(row) != 2:
+                      return f"Expected each row to have 2 entries, got {row!r}"
+              _syms = {n: sp.Symbol(n) for n in
+                       ("Lambda", "t", "V_LL", "V_LR", "V_RL", "V_RR")}
+              try:
+                  M = sp.Matrix([[sp.sympify(str(e), locals=_syms) for e in row]
+                                 for row in matrix])
+              except Exception as exc:
+                  return f"Could not parse entries as sympy expressions: {exc}"
+              # Distinct generic (prime) values expose generic, non-fine-tuned behaviour.
+              subs = {_syms["Lambda"]: 1, _syms["t"]: 1, _syms["V_LL"]: 2,
+                      _syms["V_LR"]: 3, _syms["V_RL"]: 5, _syms["V_RR"]: 7}
+              beta = M.subs(subs)
+              if beta.free_symbols:
+                  return f"Unexpected free symbols after substitution: {beta.free_symbols}"
+              gram = beta * beta.H
+              trace = sp.trace(gram)
+              if sp.simplify(trace) == 0:
+                  return "Zero-norm amplitude matrix has no well-defined entanglement entropy"
+              rho = gram / trace
+              S = sp.Integer(0)
+              for eig, mult in rho.eigenvals().items():
+                  mu = sp.re(eig).evalf()          # PSD => real, non-negative
+                  if mu > 1e-15:                    # 0*log0 := 0
+                      S += mult * (-mu * sp.log(mu, 2))
+              S = float(S.evalf())
+              if S < 1e-9:
+                  return True
+              return f"Full-sum construction must carry zero entanglement entropy (S == 0 bits), got S={S} bits"
+
+  - description: "Diagonal (Aziz-Howl) construction carries POSITIVE entanglement entropy (generically entangled)"
+    name: "diagonal_positive_entanglement_entropy"
+    test_cases:
+      - input: ["diagonal"]
+        validation_func: |
+          def validate(matrix):
+              import sympy as sp
+              # Same bipartite-state reading as the full-sum entropy check, but for
+              # the diagonal construction, which is generically rank 2 and so carries
+              # S > 0 bits of entanglement between the two objects.
+              if not isinstance(matrix, (list, tuple)) or len(matrix) != 2:
+                  return f"Expected a 2x2 nested list of expression strings, got {type(matrix)}"
+              for row in matrix:
+                  if not isinstance(row, (list, tuple)) or len(row) != 2:
+                      return f"Expected each row to have 2 entries, got {row!r}"
+              _syms = {n: sp.Symbol(n) for n in
+                       ("Lambda", "t", "V_LL", "V_LR", "V_RL", "V_RR")}
+              try:
+                  M = sp.Matrix([[sp.sympify(str(e), locals=_syms) for e in row]
+                                 for row in matrix])
+              except Exception as exc:
+                  return f"Could not parse entries as sympy expressions: {exc}"
+              subs = {_syms["Lambda"]: 1, _syms["t"]: 1, _syms["V_LL"]: 2,
+                      _syms["V_LR"]: 3, _syms["V_RL"]: 5, _syms["V_RR"]: 7}
+              beta = M.subs(subs)
+              if beta.free_symbols:
+                  return f"Unexpected free symbols after substitution: {beta.free_symbols}"
+              gram = beta * beta.H
+              trace = sp.trace(gram)
+              if sp.simplify(trace) == 0:
+                  return "Zero-norm amplitude matrix has no well-defined entanglement entropy"
+              rho = gram / trace
+              S = sp.Integer(0)
+              for eig, mult in rho.eigenvals().items():
+                  mu = sp.re(eig).evalf()
+                  if mu > 1e-15:
+                      S += mult * (-mu * sp.log(mu, 2))
+              S = float(S.evalf())
+              if S > 1e-6:
+                  return True
+              return f"Diagonal construction should be generically entangled (S > 0 bits), got S={S} bits"

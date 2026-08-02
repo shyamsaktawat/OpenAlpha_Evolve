@@ -297,6 +297,70 @@ def validate(input):
         self.assertEqual(evaluated_program.fitness_scores["total_tests"], 1.0)
         self.assertIn("Failed 1 of 1 tests at Level 0 ('default_level').", evaluated_program.errors)
 
+    @patch.object(EvaluatorAgent, '_execute_code_safely')
+    async def test_validation_func_returning_error_string_counts_as_failure(self, mock_execute_code_safely):
+        # Regression: a validation function may return a descriptive string to
+        # explain a failure (examples/circle_packing.yaml does exactly this).
+        # Such a string is truthy, so a plain `if validate_func(actual):` check
+        # scored every one of those failures as a pass. Only an explicit True
+        # may count as a pass.
+        expected_script_output = {
+            "test_outputs": [{"test_case_id": 0, "output": 5, "runtime_ms": 10.0, "status": "success"}],
+            "average_runtime_ms": 10.0
+        }
+        mock_execute_code_safely.return_value = (expected_script_output, None)
+
+        task_with_string_failure = TaskDefinition(
+            id="test_task_validation_string_failure",
+            description="Validation function that reports failure via a message string",
+            function_name_to_evolve="test_function",
+            input_output_examples=[
+                {
+                    "input": [10],
+                    "validation_func": """
+def validate(output):
+    return "Output should have been a tuple, got something else"
+"""
+                }
+            ]
+        )
+
+        evaluated_program = await self.agent.evaluate_program(self.program, task_with_string_failure)
+
+        self.assertEqual(evaluated_program.fitness_scores["correctness"], 0.0)
+        self.assertEqual(evaluated_program.fitness_scores["passed_tests"], 0.0)
+        self.assertEqual(evaluated_program.fitness_scores["total_tests"], 1.0)
+
+    @patch.object(EvaluatorAgent, '_execute_code_safely')
+    async def test_validation_func_returning_truthy_nonbool_counts_as_failure(self, mock_execute_code_safely):
+        # Only an explicit True passes -- a truthy non-bool (e.g. a sympy Boolean,
+        # or any other object) must not be silently accepted.
+        expected_script_output = {
+            "test_outputs": [{"test_case_id": 0, "output": 5, "runtime_ms": 10.0, "status": "success"}],
+            "average_runtime_ms": 10.0
+        }
+        mock_execute_code_safely.return_value = (expected_script_output, None)
+
+        task_truthy = TaskDefinition(
+            id="test_task_validation_truthy_nonbool",
+            description="Validation function returning a truthy non-True value",
+            function_name_to_evolve="test_function",
+            input_output_examples=[
+                {
+                    "input": [10],
+                    "validation_func": """
+def validate(output):
+    return 1  # truthy, but not True
+"""
+                }
+            ]
+        )
+
+        evaluated_program = await self.agent.evaluate_program(self.program, task_truthy)
+
+        self.assertEqual(evaluated_program.fitness_scores["correctness"], 0.0)
+        self.assertEqual(evaluated_program.fitness_scores["passed_tests"], 0.0)
+
 
 if __name__ == '__main__':
     unittest.main()

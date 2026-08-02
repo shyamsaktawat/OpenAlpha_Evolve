@@ -162,6 +162,10 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
     ```bash
     python -m main examples/shortest_path.yaml
     ```
+    Or try the synthetic quantum-gravity scaling-law toy benchmark:
+    ```bash
+    python -m main examples/quantum_gravity_scaling.yaml
+    ```
     Watch the logs in your terminal to see the evolutionary process unfold! Log files are also saved to `alpha_evolve.log` (by default).
 
 7.  **Launch the Gradio Web Interface**
@@ -188,6 +192,8 @@ task_description: |
   Be specific about function names, expected behavior, and constraints.
 function_name: "your_function_name"
 allowed_imports: ["module1", "module2"]
+expert_knowledge: | # Optional: reference formulas, equations, or a starting-point
+  implementation to guide the LLM's initial and mutation prompts.
 
 tests:
   - description: "Test group description" # Describes a group of related tests
@@ -206,7 +212,10 @@ tests:
               return isinstance(output_from_function, bool) and output_from_function is True
 ```
 
-See the example in `examples/shortest_path.yaml`
+See the example in `examples/shortest_path.yaml`, or `examples/quantum_gravity_scaling.yaml`
+for an example that also uses the optional `expert_knowledge` field to seed the LLM
+with reference formulas for a synthetic (toy, not physically validated) numerical
+benchmark.
 
 ### 2. Using Python Code (Legacy)
 
