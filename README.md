@@ -157,6 +157,39 @@ OpenAlpha_Evolve employs a modular, agent-based architecture to orchestrate an e
     ```
     Add the necessary API key variables for your chosen LLM provider(s) to your `.env` file.
 
+    ##### MiniMax
+    MiniMax can be used through LiteLLM with `MiniMax-M3.1-Flash` (recommended) or `MiniMax-M3`. Choose exactly one profile below and add it to your `.env` file. The examples use `MiniMax-M3.1-Flash`; replace only the model ID with `MiniMax-M3` to use the alternative model. Existing explicit model settings remain supported.
+
+    Flash uses adaptive thinking by default. Do not pass disabled thinking, `reasoning_effort="none"`, or `service_tier` for Flash. These profiles leave thinking and effort unset to use the API defaults. See the [MiniMax model guide](https://platform.minimax.io/docs/guides/models-intro) for model capabilities.
+
+    Global OpenAI-compatible API:
+    ```bash
+    OPENAI_API_KEY="your_minimax_api_key"
+    LITELLM_DEFAULT_MODEL="openai/MiniMax-M3.1-Flash"
+    LITELLM_DEFAULT_BASE_URL="https://api.minimax.io/v1"
+    ```
+
+    Mainland China OpenAI-compatible API:
+    ```bash
+    OPENAI_API_KEY="your_minimax_api_key"
+    LITELLM_DEFAULT_MODEL="openai/MiniMax-M3.1-Flash"
+    LITELLM_DEFAULT_BASE_URL="https://api.minimaxi.com/v1"
+    ```
+
+    Global Anthropic-compatible API:
+    ```bash
+    ANTHROPIC_API_KEY="your_minimax_api_key"
+    LITELLM_DEFAULT_MODEL="anthropic/MiniMax-M3.1-Flash"
+    LITELLM_DEFAULT_BASE_URL="https://api.minimax.io/anthropic"
+    ```
+
+    Mainland China Anthropic-compatible API:
+    ```bash
+    ANTHROPIC_API_KEY="your_minimax_api_key"
+    LITELLM_DEFAULT_MODEL="anthropic/MiniMax-M3.1-Flash"
+    LITELLM_DEFAULT_BASE_URL="https://api.minimaxi.com/anthropic"
+    ```
+
 6.  **Run OpenAlpha_Evolve!**
     Run the example task (Dijkstra's algorithm) with:
     ```bash
