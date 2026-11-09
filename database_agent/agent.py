@@ -82,7 +82,7 @@ class InMemoryDatabaseAgent(DatabaseAgentInterface, BaseAgent):
 
     async def get_best_programs(
         self,
-        task_id: str, # task_id is not strictly used by InMemoryDB for filtering, but part of interface
+        task_id: str,
         limit: int = 5,
         objective: Literal["correctness", "runtime_ms"] = "correctness",
         sort_order: Literal["asc", "desc"] = "desc",
@@ -92,7 +92,11 @@ class InMemoryDatabaseAgent(DatabaseAgentInterface, BaseAgent):
             logger.info("No programs in database to retrieve 'best' from.")
             return []
 
-        all_progs = list(self._programs.values())
+        # Filter by task_id so that results never leak across tasks sharing the same database file.
+        all_progs = [p for p in self._programs.values() if p.task_id == task_id]
+        if not all_progs:
+            logger.info(f"No programs with task_id '{task_id}' in database.")
+            return []
 
         if objective == "correctness":
             sorted_programs = sorted(all_progs, key=lambda p: p.fitness_scores.get("correctness", 0.0), reverse=(sort_order == "desc"))
