@@ -59,7 +59,8 @@ class TaskManagerAgent(TaskManagerInterface):
                 id=program_id,
                 code=generated_code,
                 generation=0,
-                status="unevaluated"
+                status="unevaluated",
+                task_id=self.task_definition.id,
             )
             initial_population.append(program)
             await self.database.save_program(program)
@@ -228,7 +229,8 @@ class TaskManagerAgent(TaskManagerInterface):
             generation=generation_num,
             parent_id=parent.id,
             island_id=parent.island_id,  # Inherit island ID from parent
-            status="unevaluated"
+            status="unevaluated",
+            task_id=self.task_definition.id,
         )
         logger.info(f"Successfully generated offspring {offspring.id} from parent {parent.id} ({prompt_type}).")
         return offspring
