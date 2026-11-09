@@ -1,0 +1,13 @@
+[REF] decide_next: 14/14 passed
+[BAD] decide_next/always_continue: 10/14 failing -> CAUGHT
+[BAD] decide_next/hang_after_empty: 8/14 failing -> CAUGHT
+[BAD] decide_next/warmup_inclusive_floor: 5/14 failing -> CAUGHT
+[BAD] decide_next/budget_strict_pass: 8/14 failing -> CAUGHT
+[REF] should_skip_tests: 15/15 passed
+[BAD] should_skip_tests/always_true: 11/15 failing -> CAUGHT
+[BAD] should_skip_tests/always_false: 4/15 failing -> CAUGHT
+[BAD] should_skip_tests/no_dotdot_check: 1/15 failing -> CAUGHT
+[BAD] should_skip_tests/no_status_check: 2/15 failing -> CAUGHT
+[BAD] should_skip_tests/no_github_check: 1/15 failing -> CAUGHT
+[BAD] should_skip_tests/docs_prefix_no_slash: 2/15 failing -> CAUGHT
+ALL CHECKS OK

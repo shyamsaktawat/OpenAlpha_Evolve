@@ -1,0 +1,80 @@
+task_id: "gate11_decide_next_v1"
+task_description: |
+  اكتب دالة بالاسم `decide_next` تقرر الخطوة التالية في حلقة قياس أداء تكيفية.
+
+  المدخلات:
+  - ratios: قائمة أعداد عشرية. كل عنصر هو نسبة الأداء (Ginux ÷ الأصلي) لتكرار أنجز بالفعل،
+    بترتيب حدوثه. العنصر الأول (إن وُجد) هو جولة الإحماء (warm-up). قد تكون القائمة فارغة.
+  - hung: قيمة منطقية. تكون True إذا تجاوز التشغيل المهلة القصوى وعُلّق.
+
+  الثوابت (اكتبها داخل الدالة):
+  - BUDGET = 0.96   (النسبة الدنيا المقبولة، أي أقصى تباطؤ 4%)
+  - WARMUP_FLOOR = 0.90
+  - MIN_REPS = 5    (عدد التكرارات المقاسة الدنيا قبل الحكم، دون احتساب الإحماء)
+  - MAX_REPS = 15   (عدد التكرارات المقاسة الأقصى، دون احتساب الإحماء)
+
+  المخرجات: نص واحد بالضبط من:
+  "HANG", "CONTINUE", "STOP_FAIL_EARLY", "STOP_PASS", "STOP_FAIL", "INCONCLUSIVE"
+
+  القواعد بالترتيب (أول قاعدة تنطبق تحسم):
+  1. إذا كانت hung صحيحة: "HANG". هذه القاعدة لها الأولوية حتى لو كانت القائمة فارغة.
+  2. إذا كانت ratios فارغة: "CONTINUE".
+  3. إذا كان ratios[0] < WARMUP_FLOOR (أقل تماماً): "STOP_FAIL_EARLY".
+     القيمة 0.90 بالضبط لا تُعتبر فشلاً مبكراً.
+  4. measured = ratios[1:] وهي التكرارات المقاسة. n = len(measured).
+     إذا كان n < MIN_REPS: "CONTINUE".
+  5. lo = أصغر قيمة في measured، و hi = أكبر قيمة فيها.
+     - إذا كان lo >= BUDGET: "STOP_PASS" (كل التكرارات ضمن الميزانية).
+     - إذا كان hi < BUDGET: "STOP_FAIL" (كلها خارج الميزانية).
+  6. غير ذلك (القيم تتقاطع مع حد الميزانية):
+     إذا كان n >= MAX_REPS: "INCONCLUSIVE"، وإلا "CONTINUE".
+
+  الحالات الحدية:
+  - المقارنة مع 0.96 غير صارمة للنجاح (>=) وصارمة للفشل (<).
+  - لا تعدّل القائمة المدخلة.
+function_name: "decide_next"
+allowed_imports: []
+
+expert_knowledge: |
+  - المجال [min, max] لخمس عينات هو فاصل ثقة لا معلمي للوسيط بنحو 93.75% (1 - 2 × 0.5^5).
+    لذلك يُعدّ حكماً متحفظاً: لا نعلن نجاحاً أو فشلاً إلا إذا كانت كل العينات في جهة واحدة.
+  - الإيقاف المبكر عند نسبة إحماء منخفضة جداً (مثل 0.03 في threads/paranoid) يوفّر معظم وقت القياس.
+
+tests:
+  - name: "basic_decisions"
+    description: "القرارات الأساسية"
+    level: 0
+    test_cases:
+      - input: [[], false]
+        output: "CONTINUE"
+      - input: [[0.5], false]
+        output: "STOP_FAIL_EARLY"
+      - input: [[0.03, 0.03], false]
+        output: "STOP_FAIL_EARLY"
+      - input: [[0.95, 0.99], false]
+        output: "CONTINUE"
+      - input: [[1.0, 1.0, 0.99, 1.01, 1.0, 0.98], false]
+        output: "STOP_PASS"
+      - input: [[1.0, 0.94, 0.93, 0.95, 0.92, 0.94], false]
+        output: "STOP_FAIL"
+      - input: [[0.5], true]
+        output: "HANG"
+
+  - name: "boundaries_and_noise"
+    description: "الحدود الدقيقة والصفوف الضجيجية"
+    level: 1
+    test_cases:
+      - input: [[], true]
+        output: "HANG"
+      - input: [[0.90, 1.0, 1.0, 1.0, 1.0, 1.0], false]
+        output: "STOP_PASS"
+      - input: [[0.8999, 1.0, 1.0, 1.0, 1.0, 1.0], false]
+        output: "STOP_FAIL_EARLY"
+      - input: [[1.0, 0.96, 0.96, 0.96, 0.96, 0.96], false]
+        output: "STOP_PASS"
+      - input: [[1.0, 1.037, 0.964, 1.01, 0.95, 1.0], false]
+        output: "CONTINUE"
+      - input: [[1.0, 1.0, 0.95, 1.0, 0.95, 1.0, 0.95, 1.0, 0.95, 1.0, 0.95, 1.0, 0.95, 1.0, 0.95, 1.0], false]
+        output: "INCONCLUSIVE"
+      - input: [[1.0, 0.99, 0.97, 0.98], false]
+        output: "CONTINUE"

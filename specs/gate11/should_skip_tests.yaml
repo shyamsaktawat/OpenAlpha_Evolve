@@ -1,0 +1,70 @@
+task_id: "gate11_should_skip_tests_v1"
+task_description: |
+  اكتب دالة بالاسم `should_skip_tests` تقرر هل يمكن تخطي اختبارات CI الثقيلة.
+
+  المدخل:
+  - changes: قائمة أزواج [status, path] ناتجة عن git diff --no-renames --name-status.
+    status نص (الحالات المعروفة الآمنة: "A" إضافة، "M" تعديل، "D" حذف)،
+    و path مسار نصي بفواصل "/".
+
+  المخرج: True إذا كان التخطي آمناً، وإلا False.
+
+  تُعتبر الحالة توثيقاً فقط إذا تحقق كل ما يلي لكل عنصر في changes:
+  1. status أحد "A" أو "M" أو "D" فقط. أي حالة أخرى (مثل "R" أو "T" أو "U") تعني False.
+  2. path نص غير فارغ، ولا يحتوي أي مكوّن يساوي ".." (بعد التقسيم على "/").
+  3. path لا يبدأ بـ ".github/" (تغييرات الـ workflows لا تُعتبر توثيقاً أبداً، حتى لو كان الملف .md).
+  4. path إما يبدأ بـ "docs/" أو يبدأ بـ "hdae/" أو ينتهي بـ ".md" (بحروف صغيرة).
+
+  قواعد إضافية:
+  - إذا كانت changes فارغة فالمخرج False (قد يعني فشل git، فنحتاط).
+  - يكفي عنصر واحد غير مطابق ليكون المخرج False.
+  - يجب أن يكون "docs/" بالشرطة المائلة: المسار "docsx/a.c" أو "docs.c" ليس توثيقاً.
+  - لا تعدّل القائمة المدخلة.
+function_name: "should_skip_tests"
+allowed_imports: []
+
+expert_knowledge: |
+  - الخيار --no-renames يجعل نقل ملف من src/ إلى docs/ يظهر كحذف (D) في src/ وإضافة (A) في docs/.
+    الحذف في src/ ليس توثيقاً، فيمنع هذا تهريب كود عبر النقل.
+  - المبدأ العام: الدالة متحفظة. الجواب True يحتاج إثباتاً كاملاً، والجواب False هو الافتراضي.
+
+tests:
+  - name: "basic_cases"
+    description: "الحالات الأساسية"
+    level: 0
+    test_cases:
+      - input: [[["M", "docs/guide.md"]]]
+        output: true
+      - input: [[["M", "README.md"], ["A", "hdae/spec.txt"]]]
+        output: true
+      - input: [[["M", "src/main.c"]]]
+        output: false
+      - input: [[["M", "docs/a.md"], ["M", "src/main.c"]]]
+        output: false
+      - input: [[]]
+        output: false
+
+  - name: "adversarial_cases"
+    description: "حالات تحاول خداع الدالة"
+    level: 1
+    test_cases:
+      - input: [[["D", "src/a.c"], ["A", "docs/a.c"]]]
+        output: false
+      - input: [[["M", ".github/workflows/notes.md"]]]
+        output: false
+      - input: [[["M", "docs/../src/x.c"]]]
+        output: false
+      - input: [[["R", "docs/a.md"]]]
+        output: false
+      - input: [[["T", "docs/a.md"]]]
+        output: false
+      - input: [[["D", "docs/old.md"]]]
+        output: true
+      - input: [[["M", "docsx/a.c"]]]
+        output: false
+      - input: [[["M", "docs.c"]]]
+        output: false
+      - input: [[["M", "src/notes.md"]]]
+        output: true
+      - input: [[["M", ""]]]
+        output: false
