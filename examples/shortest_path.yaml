@@ -23,16 +23,16 @@ tests:
         output: {"A": 0, "B": 1, "C": 6, "D": 7}
 
       - input: [{"A": {"B": 1}, "B": {}, "C": {"D": 1}, "D": {}}, "A"]
-        output: {"A": 0, "B": 1, "C": float('inf'), "D": float('inf')}
+        output: {"A": 0, "B": 1, "C": .inf, "D": .inf}
 
       - input: [{"A": {}, "B": {"C": 1}}, "A"]
-        output: {"A": 0, "B": float('inf'), "C": float('inf')}
+        output: {"A": 0, "B": .inf, "C": .inf}
 
       - input: [{}, "A"]
         output: {"A": 0}
 
       - input: [{"X": {"Y": 1}}, "Z"]
-        output: {"Z": 0, "X": float('inf'), "Y": float('inf')}
+        output: {"Z": 0, "X": .inf, "Y": .inf}
 
       - input: [
           {

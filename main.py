@@ -75,12 +75,20 @@ async def main():
         logger.error("Missing required task configuration in YAML file. Exiting.")
         return
 
+    # Read the full YAML again so optional fields (tests with levels, expert_knowledge,
+    # evaluation_criteria) reach the agents. Previously only the flattened examples were passed.
+    with open(yaml_path, 'r') as f:
+        raw_config = yaml.safe_load(f) or {}
+
     task = TaskDefinition(
         id=task_id,
         description=task_description,
         function_name_to_evolve=function_name,
         input_output_examples=test_cases,
-        allowed_imports=allowed_imports
+        allowed_imports=allowed_imports,
+        tests=raw_config.get('tests'),
+        evaluation_criteria=raw_config.get('evaluation_criteria'),
+        expert_knowledge=raw_config.get('expert_knowledge'),
     )
 
     task_manager = TaskManagerAgent(

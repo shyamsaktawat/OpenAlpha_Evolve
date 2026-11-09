@@ -163,29 +163,30 @@ print(json.dumps(final_output, default=custom_json_serializer))
 
         # Generate a unique container name to manage it during timeouts
         container_name = f"evaluator-{task_for_examples.id}-{time.time_ns()}"
-        
-        # Docker command construction
-        cmd = [
-            "docker", "run",
-            "--rm",
-            "--name", container_name,
-            "-i",
-            # Conditionally disable network
-            # "-v", f"{os.path.abspath(temp_dir)}:/app/user_code", # Ensure absolute path for temp_dir # This line will be part of the dynamic extension below
-            "-w", "/app/user_code",
-            # settings.DOCKER_IMAGE_NAME, # This line will be part of the dynamic extension below
-            # "python", "temp_script.py" # This line will be part of the dynamic extension below
-        ]
+        use_docker = getattr(settings, "EXECUTION_BACKEND", "docker") != "local"
 
-        if settings.DOCKER_NETWORK_DISABLED:
-            cmd.extend(["--network", "none"])
-        
-        # Add volume mount, image name, and script execution command
-        cmd.extend([
-            "-v", f"{os.path.abspath(temp_dir)}:/app/user_code",
-            settings.DOCKER_IMAGE_NAME,
-            "python", "temp_script.py"
-        ])
+        if use_docker:
+            # Docker command construction
+            cmd = [
+                "docker", "run",
+                "--rm",
+                "--name", container_name,
+                "-i",
+                "-w", "/app/user_code",
+            ]
+
+            if settings.DOCKER_NETWORK_DISABLED:
+                cmd.extend(["--network", "none"])
+
+            # Add volume mount, image name, and script execution command
+            cmd.extend([
+                "-v", f"{os.path.abspath(temp_dir)}:/app/user_code",
+                settings.DOCKER_IMAGE_NAME,
+                "python", "temp_script.py"
+            ])
+        else:
+            # Local backend (no isolation): run the generated script with the current interpreter
+            cmd = [sys.executable, "temp_script.py"]
 
         proc = None
         try:
@@ -194,11 +195,12 @@ print(json.dumps(final_output, default=custom_json_serializer))
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
+                **({} if use_docker else {"cwd": temp_dir})
             )
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
             duration = time.monotonic() - start_time
-            logger.debug(f"Docker execution finished in {duration:.2f}s. Exit code: {proc.returncode}")
+            logger.debug(f"Execution finished in {duration:.2f}s. Exit code: {proc.returncode}")
 
             stdout_str = stdout.decode('utf-8', errors='replace').strip()
             stderr_str = stderr.decode('utf-8', errors='replace').strip()
@@ -242,7 +244,7 @@ print(json.dumps(final_output, default=custom_json_serializer))
 
         except asyncio.TimeoutError:
             logger.warning(f"Execution for container '{container_name}' initiating timeout handling.")
-            if proc and proc.returncode is None: # Check if process is still running
+            if use_docker and proc and proc.returncode is None: # Check if process is still running
                 logger.info(f"Attempting to stop Docker container: {container_name}")
                 stop_cmd = ["docker", "stop", container_name]
                 try:
@@ -271,7 +273,7 @@ print(json.dumps(final_output, default=custom_json_serializer))
                 except ProcessLookupError: pass
                 except Exception as e_kill: logger.error(f"Error trying to kill original subprocess after docker stop/kill: {e_kill}")
             
-            logger.warning(f"Code execution in Docker container '{container_name}' timed out after {timeout} seconds.")
+            logger.warning(f"Code execution {'in Docker container ' + repr(container_name) if use_docker else 'locally'} timed out after {timeout} seconds.")
             return None, f"Execution timed out after {timeout} seconds (container {container_name})."
         except Exception as e:
             logger.error(f"An unexpected error occurred during code execution: {e}", exc_info=True)
