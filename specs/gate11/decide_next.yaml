@@ -78,3 +78,16 @@ tests:
         output: "INCONCLUSIVE"
       - input: [[1.0, 0.99, 0.97, 0.98], false]
         output: "CONTINUE"
+
+  - name: "count_and_cross_checks"
+    description: "حدود عدد التكرارات وتقاطع الميزانية (أُضيفت بعد التدقيق)"
+    level: 1
+    test_cases:
+      - input: [[1.0, 0.97, 0.98, 0.99, 0.97], false]
+        output: "CONTINUE"
+      - input: [[1.0, 1.0, 0.95, 1.0, 0.95, 1.0, 0.95, 1.0, 0.95, 1.0, 0.95, 1.0, 0.95, 1.0, 0.95], false]
+        output: "CONTINUE"
+      - input: [[1.0, 0.96, 0.95, 0.95, 0.95, 0.95], false]
+        output: "CONTINUE"
+      - input: [[0.9, 0.95, 0.95, 0.95, 0.95], false]
+        output: "CONTINUE"

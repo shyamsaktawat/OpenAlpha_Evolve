@@ -20,6 +20,8 @@ task_description: |
   - يكفي عنصر واحد غير مطابق ليكون المخرج False.
   - يجب أن يكون "docs/" بالشرطة المائلة: المسار "docsx/a.c" أو "docs.c" ليس توثيقاً.
   - لا تعدّل القائمة المدخلة.
+  - قاعدة الشكل: أي عنصر لا يطابق [status, path] (قائمة من عنصرين بالضبط) يعني False، حتى لو كانت بقية العناصر توثيقاً.
+  - قاعدة الامتداد: امتداد ".md" حساس لحالة الأحرف (حروف صغيرة فقط). "src/A.MD" و"README.MD" ليسا توثيقاً. "docs/A.MD" توثيق لأنه تحت docs/.
 function_name: "should_skip_tests"
 allowed_imports: []
 
@@ -67,4 +69,19 @@ tests:
       - input: [[["M", "src/notes.md"]]]
         output: true
       - input: [[["M", ""]]]
+        output: false
+
+  - name: "shape_and_extension_case"
+    description: "شكل العنصر وحساسية امتداد .md لحالة الأحرف (أُضيفت بعد التدقيق)"
+    level: 1
+    test_cases:
+      - input: [[["M"]]]
+        output: false
+      - input: [[["M", "docs/a.md"], ["M"]]]
+        output: false
+      - input: [[["M", "docs/A.MD"]]]
+        output: true
+      - input: [[["M", "src/A.MD"]]]
+        output: false
+      - input: [[["M", "README.MD"]]]
         output: false

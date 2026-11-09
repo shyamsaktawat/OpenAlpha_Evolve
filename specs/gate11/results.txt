@@ -1,13 +1,48 @@
-[REF] decide_next: 14/14 passed
-[BAD] decide_next/always_continue: 10/14 failing -> CAUGHT
-[BAD] decide_next/hang_after_empty: 8/14 failing -> CAUGHT
-[BAD] decide_next/warmup_inclusive_floor: 5/14 failing -> CAUGHT
-[BAD] decide_next/budget_strict_pass: 8/14 failing -> CAUGHT
-[REF] should_skip_tests: 15/15 passed
-[BAD] should_skip_tests/always_true: 11/15 failing -> CAUGHT
-[BAD] should_skip_tests/always_false: 4/15 failing -> CAUGHT
-[BAD] should_skip_tests/no_dotdot_check: 1/15 failing -> CAUGHT
-[BAD] should_skip_tests/no_status_check: 2/15 failing -> CAUGHT
-[BAD] should_skip_tests/no_github_check: 1/15 failing -> CAUGHT
-[BAD] should_skip_tests/docs_prefix_no_slash: 2/15 failing -> CAUGHT
+### run_spec_tests.py
+[REF] decide_next: 18/18 passed
+[BAD] decide_next/always_continue: 10/18 failing -> CAUGHT
+[BAD] decide_next/hang_after_empty: 12/18 failing -> CAUGHT
+[BAD] decide_next/warmup_inclusive_floor: 6/18 failing -> CAUGHT
+[BAD] decide_next/budget_strict_pass: 9/18 failing -> CAUGHT
+[REF] should_skip_tests: 20/20 passed
+[BAD] should_skip_tests/always_true: 15/20 failing -> CAUGHT
+[BAD] should_skip_tests/always_false: 5/20 failing -> CAUGHT
+[BAD] should_skip_tests/no_dotdot_check: 3/20 failing -> CAUGHT
+[BAD] should_skip_tests/no_status_check: 4/20 failing -> CAUGHT
+[BAD] should_skip_tests/no_github_check: 3/20 failing -> CAUGHT
+[BAD] should_skip_tests/docs_prefix_no_slash: 4/20 failing -> CAUGHT
 ALL CHECKS OK
+
+### mutation_check.py
+== الحلول المرجعية ==
+REF decide_next: passed 18/18
+REF should_skip_tests: passed 20/20
+== الحلول الخاطئة (FAULTY) ==
+FAULTY decide_next/always_continue: wrong=10 exc=0 -> BEHAVIORAL first=('basic_decisions', 1, [[0.5], False], 'STOP_FAIL_EARLY', 'CONTINUE')
+FAULTY decide_next/hang_after_empty: wrong=12 exc=0 -> BEHAVIORAL first=('basic_decisions', 1, [[0.5], False], 'STOP_FAIL_EARLY', 'STOP_FAIL')
+FAULTY decide_next/warmup_inclusive_floor: wrong=6 exc=0 -> BEHAVIORAL first=('basic_decisions', 4, [[1.0, 1.0, 0.99, 1.01, 1.0, 0.98], False], 'STOP_PASS', 'CONTINUE')
+FAULTY decide_next/budget_strict_pass: wrong=9 exc=0 -> BEHAVIORAL first=('basic_decisions', 1, [[0.5], False], 'STOP_FAIL_EARLY', 'CONTINUE')
+FAULTY should_skip_tests/always_true: wrong=15 exc=0 -> BEHAVIORAL first=('basic_cases', 2, [[['M', 'src/main.c']]], False, True)
+FAULTY should_skip_tests/always_false: wrong=5 exc=0 -> BEHAVIORAL first=('basic_cases', 0, [[['M', 'docs/guide.md']]], True, False)
+FAULTY should_skip_tests/no_dotdot_check: wrong=1 exc=2 -> BEHAVIORAL first=('adversarial_cases', 2, [[['M', 'docs/../src/x.c']]], False, True)
+FAULTY should_skip_tests/no_status_check: wrong=2 exc=2 -> BEHAVIORAL first=('adversarial_cases', 3, [[['R', 'docs/a.md']]], False, True)
+FAULTY should_skip_tests/no_github_check: wrong=1 exc=2 -> BEHAVIORAL first=('adversarial_cases', 1, [[['M', '.github/workflows/notes.md']]], False, True)
+FAULTY should_skip_tests/docs_prefix_no_slash: wrong=2 exc=2 -> BEHAVIORAL first=('adversarial_cases', 6, [[['M', 'docsx/a.c']]], False, True)
+FAULTY total=10 behavioral_kills=10
+== الطفرات (MUTANTS) ==
+MUTANT decide_next/MIN_REPS=4: wrong=2 exc=0 -> BEHAVIORAL first=('count_and_cross_checks', 0, [[1.0, 0.97, 0.98, 0.99, 0.97], False], 'CONTINUE', 'STOP_PASS')
+MUTANT decide_next/MAX_REPS=14: wrong=1 exc=0 -> BEHAVIORAL first=('count_and_cross_checks', 1, [[1.0, 1.0, 0.95, 1.0, 0.95, 1.0, 0.95, 1.0, 0.95, 1.0, 0.95, 1.0, 0.95, 1.0, 0.95], False], 'CONTINUE', 'INCONCLUSIVE')
+MUTANT decide_next/lo > BUDGET بدل >=: wrong=1 exc=0 -> BEHAVIORAL first=('boundaries_and_noise', 3, [[1.0, 0.96, 0.96, 0.96, 0.96, 0.96], False], 'STOP_PASS', 'CONTINUE')
+MUTANT decide_next/hi <= BUDGET بدل <: wrong=1 exc=0 -> BEHAVIORAL first=('count_and_cross_checks', 2, [[1.0, 0.96, 0.95, 0.95, 0.95, 0.95], False], 'CONTINUE', 'STOP_FAIL')
+MUTANT decide_next/ratios[0] <= FLOOR بدل <: wrong=2 exc=0 -> BEHAVIORAL first=('boundaries_and_noise', 1, [[0.9, 1.0, 1.0, 1.0, 1.0, 1.0], False], 'STOP_PASS', 'STOP_FAIL_EARLY')
+MUTANT decide_next/فحص not ratios قبل hung: wrong=1 exc=0 -> BEHAVIORAL first=('boundaries_and_noise', 0, [[], True], 'HANG', 'CONTINUE')
+MUTANT decide_next/الإحماء ضمن measured: wrong=5 exc=0 -> BEHAVIORAL first=('basic_decisions', 5, [[1.0, 0.94, 0.93, 0.95, 0.92, 0.94], False], 'STOP_FAIL', 'CONTINUE')
+MUTANT should_skip_tests/حذف فحص .github/: wrong=1 exc=0 -> BEHAVIORAL first=('adversarial_cases', 1, [[['M', '.github/workflows/notes.md']]], False, True)
+MUTANT should_skip_tests/حذف فحص ..: wrong=1 exc=0 -> BEHAVIORAL first=('adversarial_cases', 2, [[['M', 'docs/../src/x.c']]], False, True)
+MUTANT should_skip_tests/startswith("docs") بدل "docs/": wrong=2 exc=0 -> BEHAVIORAL first=('adversarial_cases', 6, [[['M', 'docsx/a.c']]], False, True)
+MUTANT should_skip_tests/قبول R و T: wrong=2 exc=0 -> BEHAVIORAL first=('adversarial_cases', 3, [[['R', 'docs/a.md']]], False, True)
+MUTANT should_skip_tests/القائمة الفارغة -> True: wrong=1 exc=0 -> BEHAVIORAL first=('basic_cases', 4, [[]], False, True)
+MUTANT should_skip_tests/docs/ و hdae/ بلا فحص status: wrong=2 exc=0 -> BEHAVIORAL first=('adversarial_cases', 3, [[['R', 'docs/a.md']]], False, True)
+MUTANT should_skip_tests/.md بلا حساسية للأحرف (lower): wrong=2 exc=0 -> BEHAVIORAL first=('shape_and_extension_case', 3, [[['M', 'src/A.MD']]], False, True)
+MUTANT should_skip_tests/عنصر بشكل خاطئ يُتجاوز بدل False: wrong=2 exc=0 -> BEHAVIORAL first=('shape_and_extension_case', 0, [[['M']]], False, True)
+MUTANTS total=15 killed=15 behavioral_kills=15
